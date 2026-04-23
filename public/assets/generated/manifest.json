@@ -1,0 +1,252 @@
+{
+  "name": "AutoDelver Procedural Asset Set",
+  "version": 1,
+  "generatedBy": "tools/generate-assets.mjs",
+  "palette": {
+    "ink": "#20242a",
+    "line": "#343a42",
+    "softLine": "#6e7784",
+    "paper": "#f4f1e9",
+    "stone": "#b9b3a7",
+    "stoneDark": "#777067",
+    "steel": "#87909a",
+    "steelDark": "#5d6670",
+    "gold": "#d6a843",
+    "ember": "#c9653b",
+    "blood": "#9e3d43",
+    "moss": "#5f8f73",
+    "mint": "#8ec9a6",
+    "teal": "#4d9aa0",
+    "slate": "#2f4858",
+    "blue": "#5f84b8",
+    "violet": "#8a6fb0",
+    "plum": "#5e496c",
+    "bone": "#ded6c4",
+    "shadow": "#00000024"
+  },
+  "assets": [
+    {
+      "type": "heroes",
+      "id": "grimm-warrior",
+      "name": "Grimm",
+      "tags": [
+        "hero",
+        "warrior",
+        "tank"
+      ],
+      "file": "heroes/grimm-warrior.svg",
+      "path": "/assets/generated/heroes/grimm-warrior.svg"
+    },
+    {
+      "type": "heroes",
+      "id": "vex-ranger",
+      "name": "Vex",
+      "tags": [
+        "hero",
+        "ranger",
+        "dps"
+      ],
+      "file": "heroes/vex-ranger.svg",
+      "path": "/assets/generated/heroes/vex-ranger.svg"
+    },
+    {
+      "type": "heroes",
+      "id": "mira-cleric",
+      "name": "Mira",
+      "tags": [
+        "hero",
+        "cleric",
+        "support"
+      ],
+      "file": "heroes/mira-cleric.svg",
+      "path": "/assets/generated/heroes/mira-cleric.svg"
+    },
+    {
+      "type": "enemies",
+      "id": "slime",
+      "name": "Slime",
+      "tags": [
+        "enemy",
+        "blob"
+      ],
+      "file": "enemies/slime.svg",
+      "path": "/assets/generated/enemies/slime.svg"
+    },
+    {
+      "type": "enemies",
+      "id": "skitter",
+      "name": "Skitter",
+      "tags": [
+        "enemy",
+        "bug"
+      ],
+      "file": "enemies/skitter.svg",
+      "path": "/assets/generated/enemies/skitter.svg"
+    },
+    {
+      "type": "enemies",
+      "id": "brute",
+      "name": "Brute",
+      "tags": [
+        "enemy",
+        "frontline"
+      ],
+      "file": "enemies/brute.svg",
+      "path": "/assets/generated/enemies/brute.svg"
+    },
+    {
+      "type": "enemies",
+      "id": "wraith",
+      "name": "Wraith",
+      "tags": [
+        "enemy",
+        "caster"
+      ],
+      "file": "enemies/wraith.svg",
+      "path": "/assets/generated/enemies/wraith.svg"
+    },
+    {
+      "type": "enemies",
+      "id": "lich",
+      "name": "Lich",
+      "tags": [
+        "enemy",
+        "undead"
+      ],
+      "file": "enemies/lich.svg",
+      "path": "/assets/generated/enemies/lich.svg"
+    },
+    {
+      "type": "tiles",
+      "id": "floor",
+      "name": "Floor",
+      "tags": [
+        "tile"
+      ],
+      "file": "tiles/floor.svg",
+      "path": "/assets/generated/tiles/floor.svg"
+    },
+    {
+      "type": "tiles",
+      "id": "wall",
+      "name": "Wall",
+      "tags": [
+        "tile"
+      ],
+      "file": "tiles/wall.svg",
+      "path": "/assets/generated/tiles/wall.svg"
+    },
+    {
+      "type": "tiles",
+      "id": "stairs",
+      "name": "Stairs",
+      "tags": [
+        "tile",
+        "descent"
+      ],
+      "file": "tiles/stairs.svg",
+      "path": "/assets/generated/tiles/stairs.svg"
+    },
+    {
+      "type": "tiles",
+      "id": "shrine",
+      "name": "Shrine",
+      "tags": [
+        "tile",
+        "rest"
+      ],
+      "file": "tiles/shrine.svg",
+      "path": "/assets/generated/tiles/shrine.svg"
+    },
+    {
+      "type": "items",
+      "id": "sword",
+      "name": "Sword",
+      "tags": [
+        "weapon"
+      ],
+      "file": "items/sword.svg",
+      "path": "/assets/generated/items/sword.svg"
+    },
+    {
+      "type": "items",
+      "id": "bow",
+      "name": "Bow",
+      "tags": [
+        "weapon"
+      ],
+      "file": "items/bow.svg",
+      "path": "/assets/generated/items/bow.svg"
+    },
+    {
+      "type": "items",
+      "id": "staff",
+      "name": "Staff",
+      "tags": [
+        "weapon"
+      ],
+      "file": "items/staff.svg",
+      "path": "/assets/generated/items/staff.svg"
+    },
+    {
+      "type": "items",
+      "id": "potion",
+      "name": "Potion",
+      "tags": [
+        "consumable"
+      ],
+      "file": "items/potion.svg",
+      "path": "/assets/generated/items/potion.svg"
+    },
+    {
+      "type": "items",
+      "id": "gem",
+      "name": "Gem",
+      "tags": [
+        "loot"
+      ],
+      "file": "items/gem.svg",
+      "path": "/assets/generated/items/gem.svg"
+    },
+    {
+      "type": "items",
+      "id": "skull",
+      "name": "Skull",
+      "tags": [
+        "macabre"
+      ],
+      "file": "items/skull.svg",
+      "path": "/assets/generated/items/skull.svg"
+    },
+    {
+      "type": "items",
+      "id": "scroll",
+      "name": "Scroll",
+      "tags": [
+        "lore"
+      ],
+      "file": "items/scroll.svg",
+      "path": "/assets/generated/items/scroll.svg"
+    },
+    {
+      "type": "items",
+      "id": "key",
+      "name": "Key",
+      "tags": [
+        "unlock"
+      ],
+      "file": "items/key.svg",
+      "path": "/assets/generated/items/key.svg"
+    },
+    {
+      "type": "items",
+      "id": "coin",
+      "name": "Coin",
+      "tags": [
+        "loot"
+      ],
+      "file": "items/coin.svg",
+      "path": "/assets/generated/items/coin.svg"
+    }
+  ]
+}

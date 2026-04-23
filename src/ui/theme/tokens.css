@@ -1,0 +1,131 @@
+/* AutoDelver theme tokens — MD3-inspired, neutral palette */
+
+:root,
+[data-theme='light'] {
+  /* Surfaces (neutral stone/graphite) */
+  --color-bg: #f5f3ef;
+  --color-surface: #ffffff;
+  --color-surface-2: #ecebe6;
+  --color-surface-3: #dedcd4;
+  --color-overlay: rgba(20, 18, 16, 0.55);
+
+  /* Text */
+  --color-text: #1a1815;
+  --color-text-muted: #5c5850;
+  --color-text-subtle: #8a857b;
+  --color-text-inverse: #f5f3ef;
+
+  /* Borders */
+  --color-border: #dcd9d1;
+  --color-border-strong: #b8b4a8;
+
+  /* Accent — muted amber */
+  --color-accent: #a86b2c;
+  --color-accent-hover: #8f5821;
+  --color-accent-soft: #f0e3d0;
+
+  /* Semantic */
+  --color-danger: #a33c2a;
+  --color-success: #516a3b;
+  --color-warn: #9a7a1a;
+
+  /* Gameplay palette */
+  --color-tile-floor: #d9d5c9;
+  --color-tile-wall: #4a453d;
+  --color-tile-door: #8a6b3a;
+  --color-tile-stairs: #6a5d45;
+  --color-entity-delver: #2f4858;
+  --color-entity-enemy: #7a2e2a;
+  --color-warrior: #2f4858;
+  --color-ranger: #3a6a3d;
+  --color-cleric: #6b3a6a;
+  --color-entity-item: #a86b2c;
+  --color-fog: rgba(28, 26, 22, 0.65);
+  --color-active-tick: #e8b84e;
+}
+
+[data-theme='dark'] {
+  --color-bg: #131210;
+  --color-surface: #1d1c19;
+  --color-surface-2: #27251f;
+  --color-surface-3: #322f28;
+  --color-overlay: rgba(0, 0, 0, 0.7);
+
+  --color-text: #eae6dc;
+  --color-text-muted: #a8a296;
+  --color-text-subtle: #6e6a5f;
+  --color-text-inverse: #131210;
+
+  --color-border: #2e2b24;
+  --color-border-strong: #4a463c;
+
+  --color-accent: #d19452;
+  --color-accent-hover: #e5a968;
+  --color-accent-soft: #3a2b1a;
+
+  --color-danger: #d05e4a;
+  --color-success: #87a863;
+  --color-warn: #d4a837;
+
+  --color-tile-floor: #2a2822;
+  --color-tile-wall: #0e0d0b;
+  --color-tile-door: #6a4f2a;
+  --color-tile-stairs: #5a4d35;
+  --color-entity-delver: #6b9bbd;
+  --color-entity-enemy: #d05e4a;
+  --color-warrior: #6b9bbd;
+  --color-ranger: #7fb877;
+  --color-cleric: #c08bc9;
+  --color-entity-item: #d19452;
+  --color-fog: rgba(8, 7, 5, 0.8);
+  --color-active-tick: #ffd670;
+}
+
+:root {
+  /* Typography */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'SF Mono', Menlo, monospace;
+
+  --fs-xs: 0.75rem;
+  --fs-sm: 0.875rem;
+  --fs-base: 0.9375rem;
+  --fs-md: 1rem;
+  --fs-lg: 1.25rem;
+  --fs-xl: 1.5rem;
+  --fs-2xl: 2rem;
+  --fs-3xl: 2.75rem;
+
+  --lh-tight: 1.2;
+  --lh-normal: 1.5;
+  --lh-loose: 1.75;
+
+  /* Spacing (4px base) */
+  --sp-1: 0.25rem;
+  --sp-2: 0.5rem;
+  --sp-3: 0.75rem;
+  --sp-4: 1rem;
+  --sp-5: 1.5rem;
+  --sp-6: 2rem;
+  --sp-8: 3rem;
+  --sp-10: 4rem;
+
+  /* Radius */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 20px;
+
+  /* Elevation (MD3-inspired) */
+  --elev-0: none;
+  --elev-1: 0 1px 2px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.08);
+  --elev-2: 0 3px 6px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.06);
+  --elev-3: 0 10px 20px rgba(0, 0, 0, 0.1), 0 3px 6px rgba(0, 0, 0, 0.08);
+  --elev-4: 0 15px 25px rgba(0, 0, 0, 0.12), 0 5px 10px rgba(0, 0, 0, 0.08);
+
+  /* Motion */
+  --dur-fast: 120ms;
+  --dur-base: 200ms;
+  --dur-slow: 320ms;
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+}
