@@ -48,6 +48,30 @@
     return getComputedStyle(canvas).getPropertyValue(name).trim();
   }
 
+  function shade(hex: string, amount: number): string {
+    // amount: -1..1 — negative darkens, positive lightens. Falls back to input
+    // on parse errors (empty strings, var() forms).
+    const m = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(hex.trim());
+    if (!m) return hex;
+    let h = m[1];
+    if (h.length === 3) h = h.split('').map((c) => c + c).join('');
+    const r = parseInt(h.slice(0, 2), 16);
+    const g = parseInt(h.slice(2, 4), 16);
+    const b = parseInt(h.slice(4, 6), 16);
+    const adj = (c: number): number => {
+      const t = amount < 0 ? 0 : 255;
+      const k = Math.abs(amount);
+      return Math.round(c + (t - c) * k);
+    };
+    const toHex = (c: number): string => Math.max(0, Math.min(255, c)).toString(16).padStart(2, '0');
+    return `#${toHex(adj(r))}${toHex(adj(g))}${toHex(adj(b))}`;
+  }
+
+  function isDarkTheme(): boolean {
+    if (typeof document === 'undefined') return false;
+    return document.documentElement.getAttribute('data-theme') === 'dark';
+  }
+
   function draw(): void {
     if (!canvas || !world) return;
     const ctx = canvas.getContext('2d');
@@ -57,12 +81,15 @@
     canvas.height = world.grid.height * TILE_SIZE;
 
     const floorA = cssVar('--color-tile-floor') || '#d9d5c9';
-    const floorB = '#cfc9ba';
     const wallDark = cssVar('--color-tile-wall') || '#4a453d';
-    const wallLine = '#5a544a';
     const doorC = cssVar('--color-tile-door') || '#8a6b3a';
     const stairsC = cssVar('--color-tile-stairs') || '#6a5d45';
     const bg = cssVar('--color-bg') || '#f5f3ef';
+    // Derive the checker companion from the floor token so themes stay
+    // in-palette — avoids the dark-mode glitch where a hardcoded light
+    // color bled through every other floor tile.
+    const dark = isDarkTheme();
+    const floorB = dark ? shade(floorA, 0.06) : shade(floorA, -0.05);
 
     ctx.fillStyle = bg;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -77,20 +104,12 @@
           case TILE.wall: {
             ctx.fillStyle = wallDark;
             ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
-            ctx.strokeStyle = wallLine;
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            ctx.moveTo(px, py + TILE_SIZE * 0.35);
-            ctx.lineTo(px + TILE_SIZE, py + TILE_SIZE * 0.35);
-            ctx.moveTo(px, py + TILE_SIZE * 0.7);
-            ctx.lineTo(px + TILE_SIZE, py + TILE_SIZE * 0.7);
-            ctx.stroke();
             break;
           }
           case TILE.floor: {
             ctx.fillStyle = (x + y) % 2 === 0 ? floorA : floorB;
             ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
-            ctx.strokeStyle = 'rgba(0,0,0,0.06)';
+            ctx.strokeStyle = dark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.06)';
             ctx.lineWidth = 1;
             ctx.strokeRect(px + 0.5, py + 0.5, TILE_SIZE - 1, TILE_SIZE - 1);
             break;
