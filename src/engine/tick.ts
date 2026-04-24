@@ -1,4 +1,4 @@
-import type { Action, Delver, Enemy, World } from './types';
+import type { Action, Delver, Enemy, Pos, World } from './types';
 import { type Rng, sfc32 } from './rng';
 import { isWalkable, posEq, distCheb, neighbours, distManhattan } from './grid';
 import { findPath } from './pathfind';
@@ -62,9 +62,23 @@ function applyDelverAction(world: World, d: Delver, action: Action, rng: Rng): v
     }
     case 'move': {
       if (posEq(d.pos, action.target)) return;
-      // Plan through living entities — they might move or die. We only defer
-      // the actual step if the next tile is occupied *right now*.
-      const path = findPath(world.grid, d.pos, action.target);
+      // Route around currently-occupied tiles so a cluster of delvers
+      // doesn't all pick the same blocked corridor and stall. The goal
+      // tile itself stays allowed so "move to enemy" still terminates on
+      // the enemy's cell.
+      const blocked = new Set<string>();
+      for (const o of world.delvers) {
+        if (o.id !== d.id && o.hp > 0) blocked.add(`${o.pos.x},${o.pos.y}`);
+      }
+      for (const e of world.enemies) {
+        if (e.hp > 0 && !posEq(e.pos, action.target)) blocked.add(`${e.pos.x},${e.pos.y}`);
+      }
+      let path = findPath(world.grid, d.pos, action.target, blocked);
+      // If every detour is blocked (e.g. the ally is in a choke point),
+      // fall back to the naive path and let sidestep handle it.
+      if (!path || path.length < 2) {
+        path = findPath(world.grid, d.pos, action.target);
+      }
       if (!path || path.length < 2) return;
       const next = path[1];
       const occupant = entityAt(world, next);
@@ -72,15 +86,21 @@ function applyDelverAction(world: World, d: Delver, action: Action, rng: Rng): v
         d.pos = next;
         return;
       }
-      // Try a sidestep around the blocker toward the goal
+      // Sidestep: prefer a strictly-closer neighbour; otherwise take any
+      // free neighbour at equal distance so clustered delvers still move.
+      let equalFallback: Pos | null = null;
+      const currDist = distManhattan(d.pos, action.target);
       for (const n of neighbours(d.pos)) {
         if (!isWalkable(world.grid, n)) continue;
         if (entityAt(world, n)) continue;
-        if (distManhattan(n, action.target) < distManhattan(d.pos, action.target)) {
+        const nd = distManhattan(n, action.target);
+        if (nd < currDist) {
           d.pos = n;
           return;
         }
+        if (nd === currDist && !equalFallback) equalFallback = n;
       }
+      if (equalFallback) d.pos = equalFallback;
       return;
     }
     case 'attack': {
