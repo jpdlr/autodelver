@@ -205,7 +205,7 @@
             <div class="foe-stats">
               <div class="stat-cell"><span class="lbl">HP</span><span class="val">{e.hp}</span></div>
               <div class="stat-cell"><span class="lbl">ATK</span><span class="val">{e.atk}</span></div>
-              <div class="stat-cell"><span class="lbl">ARM</span><span class="val">{e.armor}</span></div>
+              <div class="stat-cell"><span class="lbl">DEF</span><span class="val">{e.armor}</span></div>
             </div>
           {/if}
           <div class="foe-tags">
