@@ -21,22 +21,9 @@
   }
 
   const isFirstRun = $derived(game.meta.totalRuns === 0);
-  let usernameDraft = $state(game.meta.username);
-  let editingUsername = $state(!game.meta.username);
   const leaderboard = $derived(
     game.onlineRankings.length ? game.onlineRankings.slice(0, 10) : game.meta.runHistory.slice(0, 5),
   );
-
-  function saveUsername(): void {
-    game.setUsername(usernameDraft);
-    usernameDraft = game.meta.username;
-    editingUsername = !game.meta.username;
-  }
-
-  function editUsername(): void {
-    usernameDraft = game.meta.username;
-    editingUsername = true;
-  }
 
   interface Classmeta {
     cls: 'warrior' | 'ranger' | 'cleric';
@@ -100,28 +87,6 @@
   </div>
 
   <div class="page-body">
-  <section class="profile-card card">
-    <div>
-      <p class="profile-label">Player identity</p>
-      <h3>{game.meta.username || 'Choose your delver name'}</h3>
-      <p>Your name, progression, scripts, and run history are saved locally in this browser.</p>
-    </div>
-
-    {#if editingUsername}
-      <form class="username-form" onsubmit={(e) => { e.preventDefault(); saveUsername(); }}>
-        <input
-          aria-label="Username"
-          placeholder="e.g. Nullmancer"
-          maxlength="24"
-          bind:value={usernameDraft}
-        />
-        <button type="submit" class="primary" disabled={!usernameDraft.trim()}>Save name</button>
-      </form>
-    {:else}
-      <button type="button" onclick={editUsername}>Edit name</button>
-    {/if}
-  </section>
-
   <div class="story card">
     <p>
       You are not a hero. You are the <strong>necromancer-programmer</strong>. Your party of three delvers descends an
@@ -420,56 +385,6 @@
   }
 
   /* ─── STORY ───────────────────────────────── */
-  .profile-card {
-    max-width: 740px;
-    margin: var(--sp-5) auto var(--sp-4);
-    padding: var(--sp-4) var(--sp-5);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--sp-4);
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
-    box-shadow: var(--elev-1);
-  }
-  .profile-label {
-    margin: 0 0 var(--sp-1);
-    color: var(--color-accent);
-    font-family: var(--font-mono);
-    font-size: var(--fs-xs);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-  }
-  .profile-card h3 {
-    margin: 0;
-    color: var(--color-text);
-  }
-  .profile-card p:last-child {
-    margin: var(--sp-1) 0 0;
-    color: var(--color-text-muted);
-    font-size: var(--fs-sm);
-    line-height: 1.5;
-  }
-  .username-form {
-    display: flex;
-    gap: var(--sp-2);
-    flex-shrink: 0;
-  }
-  .username-form input {
-    min-width: 220px;
-    padding: var(--sp-2) var(--sp-3);
-    background: var(--color-surface-2);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
-    color: var(--color-text);
-    font: inherit;
-  }
-  .username-form input:focus {
-    outline: 2px solid var(--color-accent-soft);
-    border-color: var(--color-accent);
-  }
-
   .story {
     max-width: 740px;
     margin: 0 auto var(--sp-8);
@@ -840,8 +755,6 @@
     .legacy .stats {
       grid-template-columns: repeat(2, 1fr);
     }
-    .profile-card,
-    .username-form,
     .leader-row {
       display: flex;
       flex-direction: column;
