@@ -25,6 +25,15 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // Scripts — owner can read their own doc; writes go exclusively
+    // through the saveScripts callable Function (which uses the Admin
+    // SDK and bypasses these rules). This centralises validation and
+    // makes future rate-limiting trivial to add.
+    match /scripts/{playerId} {
+      allow read: if request.auth != null && request.auth.uid == playerId;
+      allow write: if false;
+    }
+
     function isValidRanking() {
       return request.resource.data.keys().hasOnly([
           'id',

@@ -1,6 +1,8 @@
-import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import type { DelverClass } from '../engine/types';
 import { firestoreDb } from './firebase';
+import { initializeApp, getApps } from 'firebase/app';
 
 const COLLECTION = 'scripts';
 export const MAX_SCRIPT_BYTES = 50_000;
@@ -12,8 +14,24 @@ export interface CloudScripts {
   updatedAt?: number;
 }
 
-/** Fetch the player's saved scripts from Firestore. Returns null if none or
- *  Firestore isn't configured. */
+function functionsInstance() {
+  // Reuse the already-initialized app from firebase.ts by name lookup.
+  const app = getApps()[0];
+  if (!app) {
+    // Shouldn't happen — firebase.ts always initializes first — but guard.
+    initializeApp({
+      apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+      authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+      projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+      appId: import.meta.env.VITE_FIREBASE_APP_ID,
+    });
+  }
+  return getFunctions(getApps()[0], 'us-central1');
+}
+
+/** Reads the player's saved scripts directly from Firestore. The rule
+ *  allows auth.uid == doc id, so this is one round-trip. Returns null if
+ *  no doc exists or Firestore isn't configured. */
 export async function loadCloudScripts(uid: string): Promise<CloudScripts | null> {
   const db = firestoreDb();
   if (!db) return null;
@@ -40,35 +58,48 @@ export async function loadCloudScripts(uid: string): Promise<CloudScripts | null
   }
 }
 
-/** Persist all three scripts under the player's uid. Size-capped to
- *  MAX_SCRIPT_BYTES per class before being sent. */
+/** Persist all three scripts via the saveScripts Cloud Function. Writes
+ *  to scripts/* are rejected by rules unless coming from the Admin SDK,
+ *  so the function is the only path in. */
 export async function saveCloudScripts(
-  uid: string,
   scripts: Record<DelverClass, string>,
 ): Promise<void> {
-  const db = firestoreDb();
-  if (!db) return;
-  const payload = {
-    warrior: capBytes(scripts.warrior),
-    ranger: capBytes(scripts.ranger),
-    cleric: capBytes(scripts.cleric),
-    updatedAt: serverTimestamp(),
-  };
   try {
-    await setDoc(doc(db, COLLECTION, uid), payload, { merge: true });
+    const call = httpsCallable<{ scripts: Record<DelverClass, string> }, { ok: boolean }>(
+      functionsInstance(),
+      'saveScripts',
+    );
+    await call({ scripts: capAll(scripts) });
   } catch (err) {
+    // Don't surface to UI — scripts remain in localStorage as a fallback.
     console.warn('[cloudScripts] save failed', err);
   }
 }
 
-function capBytes(s: string): string {
-  // Guard against pathological scripts. We cap by UTF-16 length as a proxy
-  // for byte count — rules will reject anything larger on the server.
-  return s.length > MAX_SCRIPT_BYTES ? s.slice(0, MAX_SCRIPT_BYTES) : s;
+function capAll(s: Record<DelverClass, string>): Record<DelverClass, string> {
+  return {
+    warrior: capBytes(s.warrior),
+    ranger: capBytes(s.ranger),
+    cleric: capBytes(s.cleric),
+  };
 }
 
-/** Create a debounced saver scoped to a given uid. */
-export function makeScriptSync(uid: string, debounceMs = 1500) {
+function capBytes(s: string): string {
+  // Match the function's MAX_BYTES_PER_SCRIPT. Use TextEncoder for an
+  // accurate UTF-8 byte count; fall back to length if unavailable.
+  try {
+    const bytes = new TextEncoder().encode(s);
+    if (bytes.length <= MAX_SCRIPT_BYTES) return s;
+    // Slice conservatively — character boundary isn't critical; the
+    // function just rejects oversize, this is a safety trim.
+    return new TextDecoder().decode(bytes.slice(0, MAX_SCRIPT_BYTES));
+  } catch {
+    return s.length > MAX_SCRIPT_BYTES ? s.slice(0, MAX_SCRIPT_BYTES) : s;
+  }
+}
+
+/** Debounced saver — coalesces rapid script edits into a single call. */
+export function makeScriptSync(debounceMs = 1500) {
   let timer: ReturnType<typeof setTimeout> | null = null;
   let pending: Record<DelverClass, string> | null = null;
   return {
@@ -80,7 +111,7 @@ export function makeScriptSync(uid: string, debounceMs = 1500) {
         if (pending) {
           const snap = pending;
           pending = null;
-          void saveCloudScripts(uid, snap);
+          void saveCloudScripts(snap);
         }
       }, debounceMs);
     },
@@ -92,7 +123,7 @@ export function makeScriptSync(uid: string, debounceMs = 1500) {
       if (pending) {
         const snap = pending;
         pending = null;
-        await saveCloudScripts(uid, snap);
+        await saveCloudScripts(snap);
       }
     },
   };

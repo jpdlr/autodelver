@@ -7,6 +7,7 @@ import { loadScript } from '../persistence/scripts';
 import { DEFAULT_META, type MetaProgression, type DelverClass } from '../engine/types';
 import { hasFirestoreConfig } from '../persistence/firebase';
 import { loadRankings, savePlayerProfile, submitRanking, type RankingEntry } from '../persistence/rankings';
+import { loadCloudScripts, makeScriptSync } from '../persistence/cloudScripts';
 import { auth } from './auth.svelte';
 
 export type Screen = 'home' | 'tutorial' | 'loadout' | 'run' | 'postmortem' | 'leaderboard';
@@ -48,8 +49,59 @@ function createGame() {
   let host: SandboxHost | null = null;
   let timer: number | null = null;
 
+  // Cross-device script sync: hydrate from Firestore after the user is
+  // authenticated, and debounce cloud saves on subsequent edits. Local
+  // storage remains the source of truth while offline.
+  const cloudSync = makeScriptSync();
+  let cloudLoadedForUid: string | null = null;
+
   if (typeof window !== 'undefined' && hasFirestoreConfig()) {
     void refreshRankings();
+  }
+
+  // Watch auth state — when a player signs in (or switches accounts),
+  // pull their cloud scripts into the editor. When signed out, stop
+  // syncing and fall back to local-only.
+  $effect.root(() => {
+    $effect(() => {
+      const uid = auth.user?.uid ?? null;
+      if (!uid) {
+        if (cloudLoadedForUid) {
+          // Flush any pending edits before the sign-out finalises so nothing
+          // is lost when the account is switched.
+          void cloudSync.flush();
+        }
+        cloudLoadedForUid = null;
+        return;
+      }
+      if (cloudLoadedForUid === uid) return;
+      cloudLoadedForUid = uid;
+      void hydrateFromCloud(uid);
+    });
+  });
+
+  async function hydrateFromCloud(uid: string): Promise<void> {
+    const cloud = await loadCloudScripts(uid);
+    if (!cloud) {
+      // First time signing in on this device — push the local scripts up
+      // so the cloud has a starting state.
+      cloudSync.schedule({ ...scripts });
+      return;
+    }
+    // Prefer cloud over local — this is how cross-device continuity works.
+    scripts = {
+      warrior: cloud.warrior,
+      ranger: cloud.ranger,
+      cleric: cloud.cleric,
+    };
+    // Mirror to localStorage so offline play stays in sync.
+    for (const cls of ['warrior', 'ranger', 'cleric'] as DelverClass[]) {
+      try {
+        localStorage.setItem(`autodelver:script:v1:${cls}`, scripts[cls]);
+      } catch {
+        /* ignore */
+      }
+    }
   }
 
   async function refreshRankings(): Promise<void> {
@@ -263,9 +315,11 @@ function createGame() {
     refreshRankings,
     setScript(cls: DelverClass, script: string): void {
       scripts = { ...scripts, [cls]: script };
+      if (auth.user) cloudSync.schedule({ ...scripts });
     },
     setScripts(next: Record<DelverClass, string>): void {
       scripts = { ...next };
+      if (auth.user) cloudSync.schedule({ ...scripts });
     },
     openMidRunEditor(): void {
       if (!world || world.status !== 'running') return;
