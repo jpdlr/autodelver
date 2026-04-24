@@ -19,6 +19,7 @@
   let loopHandle: number | null = null;
   let status = $state<LessonCheck>({ status: 'running' });
   let running = $state(false);
+  let lastError = $state<string | null>(null);
   let tickRate = 200;
 
   const classNames: Record<DelverClass, string> = {
@@ -48,12 +49,14 @@
     world = w;
     status = { status: 'running' };
     running = false;
+    lastError = null;
   }
 
   async function run(): Promise<void> {
     if (running) return;
     running = true;
     status = { status: 'running' };
+    lastError = null;
 
     // Rebuild world fresh using current (possibly edited) scripts.
     const built = lesson.build();
@@ -72,20 +75,41 @@
     startLoop();
   }
 
+  function stop(): void {
+    stopLoop();
+    running = false;
+  }
+
   function startLoop(): void {
     stopLoop();
     loopHandle = window.setInterval(async () => {
       if (!world || !host) return;
       if (world.status !== 'running') return;
       const { actions, events } = await host.step(world, new Set());
-      if (events.length) world.events.push(...events);
+      if (events.length) {
+        world.events.push(...events);
+        // Surface the most recent script error so the player can fix their code.
+        const err = [...events].reverse().find(
+          (e) => e.kind === 'script-error' || e.kind === 'budget-miss',
+        );
+        if (err) lastError = err.message;
+      }
       advanceTick(world, { delverActions: actions });
       // Force reactivity.
       world = world;
 
-      // Safety cap.
-      if (world.tick > 300 && world.status === 'running') {
-        world.status = 'wiped';
+      // Safety cap — if the party hasn't reached the stairs in 200 ticks,
+      // treat it as a failure so the lesson resets instead of looping forever.
+      if (world.tick > 200 && world.status === 'running') {
+        status = {
+          status: 'fail',
+          message: lastError
+            ? `Script error: ${lastError}`
+            : 'Time ran out — your delver never reached the stairs.',
+        };
+        stopLoop();
+        running = false;
+        return;
       }
 
       const res = lesson.check(world);
@@ -216,13 +240,16 @@
           <GridCanvas world={world} />
         </div>
         <div class="sim-controls">
-          <div class="sim-status" class:pass={status.status === 'pass'} class:fail={status.status === 'fail'}>
+          <div class="sim-status" class:pass={status.status === 'pass'} class:fail={status.status === 'fail'} class:warn={lastError && status.status === 'running'}>
             {#if status.status === 'pass'}
               <span class="s-ico">✓</span>
               <span>{status.message ?? 'Objective complete.'}</span>
             {:else if status.status === 'fail'}
               <span class="s-ico">✕</span>
               <span>{status.message ?? 'Lesson failed — retry.'}</span>
+            {:else if running && lastError}
+              <span class="s-ico">!</span>
+              <span class="err-msg">Script error: <code>{lastError}</code></span>
             {:else if running}
               <span class="s-ico spin">◐</span>
               <span>Running — tick {world?.tick ?? 0}</span>
@@ -232,7 +259,10 @@
             {/if}
           </div>
           <div class="buttons">
-            <button type="button" onclick={retry} disabled={running}>Retry</button>
+            {#if running}
+              <button type="button" onclick={stop} title="Stop the simulation">Stop</button>
+            {/if}
+            <button type="button" onclick={retry} title="Reset the lesson and clear your script back to the starter">Retry</button>
             {#if status.status === 'pass' && activeIdx < LESSONS.length - 1}
               <button type="button" class="primary" onclick={nextLesson}>Next lesson →</button>
             {:else if status.status === 'pass'}
@@ -513,6 +543,16 @@
   }
   .sim-status.pass { color: var(--color-ranger); }
   .sim-status.fail { color: var(--color-danger, #c94a4a); }
+  .sim-status.warn { color: var(--color-danger, #c94a4a); }
+  .err-msg code {
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    background: color-mix(in srgb, var(--color-danger, #c94a4a) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--color-danger, #c94a4a) 35%, transparent);
+    padding: 2px 6px;
+    border-radius: 3px;
+    color: var(--color-text);
+  }
   .sim-status .s-ico {
     display: inline-flex;
     align-items: center;
