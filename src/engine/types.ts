@@ -103,6 +103,7 @@ export interface MetaProgression {
   totalDeaths: number;
   unlockedApis: string[];
   runHistory: RunRecord[];
+  tutorialCompleted?: boolean;
 }
 
 export interface RunRecord {
@@ -154,4 +155,5 @@ export const DEFAULT_META: MetaProgression = {
   totalDeaths: 0,
   unlockedApis: [],
   runHistory: [],
+  tutorialCompleted: false,
 };

@@ -411,6 +411,11 @@ function createGame() {
       });
     },
     refreshRankings,
+    markTutorialCompleted(): void {
+      if (meta.tutorialCompleted) return;
+      meta = { ...meta, tutorialCompleted: true };
+      saveMeta(meta);
+    },
     setScript(cls: DelverClass, script: string): void {
       scripts = { ...scripts, [cls]: script };
       if (auth.user) cloudSync.schedule({ ...scripts });

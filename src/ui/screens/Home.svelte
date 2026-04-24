@@ -20,7 +20,12 @@
     game.screen = 'leaderboard';
   }
 
-  const isFirstRun = $derived(game.meta.totalRuns === 0);
+  // Show the "Start Tutorial" hero CTA only for brand-new players. Once
+  // they've finished the tutorial or completed any real run, descend is
+  // the primary action.
+  const isFirstRun = $derived(
+    game.meta.totalRuns === 0 && !game.meta.tutorialCompleted,
+  );
   const leaderboard = $derived(
     game.onlineRankings.length ? game.onlineRankings.slice(0, 10) : game.meta.runHistory.slice(0, 5),
   );

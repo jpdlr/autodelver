@@ -119,6 +119,11 @@
         status = res;
         stopLoop();
         running = false;
+        // Final lesson cleared? Flip the completion flag so the Home
+        // CTA switches from "Start Tutorial" to "Descend".
+        if (res.status === 'pass' && activeIdx === LESSONS.length - 1) {
+          game.markTutorialCompleted();
+        }
       }
     }, tickRate);
   }
