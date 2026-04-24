@@ -226,7 +226,10 @@ function createGame() {
     await advance();
     const status = world?.status;
     if (status === 'running') {
-      const delay = Math.max(30, 160 / rate);
+      // Base 260ms/tick at 1x so the action is readable; higher speeds
+      // divide in, floor at 35ms so 8x still feels fast but rendering
+      // can keep up.
+      const delay = Math.max(35, 260 / rate);
       timer = window.setTimeout(loopOnce, delay);
     } else if (status === 'cleared') {
       timer = window.setTimeout(async () => {
