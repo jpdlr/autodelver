@@ -38,13 +38,39 @@
           <div
             class="party-member {d.class}"
             class:downed={d.hp === 0}
-            title="{d.name} · {d.class} · {d.hp}/{d.maxHp} HP"
+            title="{d.name} · {d.class} · {d.hp}/{d.maxHp} HP · {d.mp}/{d.maxMp} MP"
           >
             <span class="pdot" aria-hidden="true"></span>
             <span class="pname">{d.name}</span>
-            <span class="hp" aria-hidden="true">
-              <span class="hp-bar" style="width: {Math.max(0, (d.hp / d.maxHp) * 100)}%"></span>
-            </span>
+            <div class="pbars" aria-hidden="true">
+              <div class="bar hp">
+                <span class="bar-fill" style="width: {Math.max(0, (d.hp / d.maxHp) * 100)}%"></span>
+              </div>
+              {#if d.maxMp > 0}
+                <div class="bar mp">
+                  <span class="bar-fill" style="width: {Math.max(0, (d.mp / d.maxMp) * 100)}%"></span>
+                </div>
+              {/if}
+            </div>
+            {#if d.class === 'cleric'}
+              <div class="abilities" aria-hidden="true">
+                <span
+                  class="ab-chip"
+                  class:on-cd={d.cooldowns.heal > 0}
+                  title={d.cooldowns.heal > 0 ? `Heal on cooldown (${d.cooldowns.heal}t)` : 'Heal — ready (2 MP)'}
+                >
+                  <svg viewBox="0 0 16 16" width="10" height="10" aria-hidden="true"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                  {#if d.cooldowns.heal > 0}<span class="cd">{d.cooldowns.heal}</span>{/if}
+                </span>
+                <span
+                  class="ab-chip"
+                  class:spent={d.reviveUsedDepth !== null && d.reviveUsedDepth === (game.world?.depth ?? 0)}
+                  title={d.reviveUsedDepth === (game.world?.depth ?? 0) ? 'Revive used this depth' : 'Revive — ready (once per depth)'}
+                >
+                  <svg viewBox="0 0 16 16" width="10" height="10" aria-hidden="true"><path d="M13 8a5 5 0 1 1-1.5-3.5M13 3v3h-3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
+                </span>
+              </div>
+            {/if}
           </div>
         {/each}
       </div>
@@ -297,23 +323,74 @@
     color: var(--color-text);
     font-size: var(--fs-xs);
   }
-  .hp {
-    position: relative;
-    width: 48px;
+  .pbars {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    width: 56px;
+  }
+  .bar {
     height: 4px;
     background: var(--color-bg);
     border-radius: 2px;
     overflow: hidden;
   }
-  .hp-bar {
+  .bar-fill {
     display: block;
     height: 100%;
-    background: linear-gradient(90deg, var(--color-accent) 0%, color-mix(in srgb, var(--color-accent) 60%, var(--color-warrior)) 100%);
     transition: width var(--dur-base) var(--ease-out);
   }
-  .party-member.warrior .hp-bar { background: var(--color-warrior); }
-  .party-member.ranger .hp-bar  { background: var(--color-ranger); }
-  .party-member.cleric .hp-bar  { background: var(--color-cleric); }
+  .party-member.warrior .bar.hp .bar-fill { background: var(--color-warrior); }
+  .party-member.ranger  .bar.hp .bar-fill { background: var(--color-ranger); }
+  .party-member.cleric  .bar.hp .bar-fill { background: var(--color-cleric); }
+  .bar.mp .bar-fill {
+    background: color-mix(in srgb, var(--color-accent) 70%, #5f84b8);
+    opacity: 0.8;
+  }
+
+  /* Ability chips (cleric only for now) */
+  .abilities {
+    display: inline-flex;
+    gap: 3px;
+    margin-left: 2px;
+  }
+  .ab-chip {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    background: color-mix(in srgb, var(--color-cleric) 18%, transparent);
+    border: 1px solid color-mix(in srgb, var(--color-cleric) 45%, transparent);
+    color: var(--color-cleric);
+    border-radius: 4px;
+    transition: opacity var(--dur-fast) var(--ease-out);
+  }
+  .ab-chip.on-cd {
+    background: var(--color-surface);
+    color: var(--color-text-subtle);
+    border-color: var(--color-border);
+  }
+  .ab-chip.on-cd .cd {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--color-text);
+    background: color-mix(in srgb, var(--color-surface) 85%, transparent);
+    border-radius: 3px;
+  }
+  .ab-chip.spent {
+    opacity: 0.3;
+    background: transparent;
+    color: var(--color-text-subtle);
+    border-style: dashed;
+  }
 
   .body {
     flex: 1;
