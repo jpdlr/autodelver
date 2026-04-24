@@ -51,8 +51,24 @@ export async function savePlayerProfile(playerId: string, username: string): Pro
 export async function loadRankings(count = 10): Promise<RankingEntry[]> {
   const db = firestoreDb();
   if (!db) return [];
-  const snapshot = await getDocs(query(collection(db, COLLECTION), orderBy('score', 'desc'), limit(count)));
-  return snapshot.docs.map((d) => d.data() as RankingEntry);
+  // Over-fetch so dedup-by-player leaves us with enough distinct players
+  // to fill the board. Each run writes its own doc, but the leaderboard
+  // should show one row per player (their best run).
+  const snapshot = await getDocs(
+    query(collection(db, COLLECTION), orderBy('score', 'desc'), limit(count * 5)),
+  );
+  const entries = snapshot.docs.map((d) => d.data() as RankingEntry);
+  return dedupeBestPerPlayer(entries).slice(0, count);
+}
+
+export function dedupeBestPerPlayer(entries: RankingEntry[]): RankingEntry[] {
+  const best = new Map<string, RankingEntry>();
+  for (const e of entries) {
+    const key = e.playerId || e.username;
+    const prev = best.get(key);
+    if (!prev || e.score > prev.score) best.set(key, e);
+  }
+  return [...best.values()].sort((a, b) => b.score - a.score);
 }
 
 function sanitizeUsername(username: string): string {

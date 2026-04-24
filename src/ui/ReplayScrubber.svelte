@@ -81,9 +81,11 @@
         }, null) ?? trace.frames[0],
   );
 
-  // Initialise to the last tick on mount so players see the endgame state.
-  $effect(() => {
-    if (lastTick && currentTick === 0) currentTick = lastTick;
+  // One-shot: on mount, default to the last tick so players land on the
+  // endgame state. Must NOT be reactive — otherwise scrubbing to 0 would
+  // instantly snap back to the end.
+  onMount(() => {
+    if (lastTick > 0) currentTick = lastTick;
   });
 
   // ─── Event filter ─────────────────────────────────────────────
@@ -434,13 +436,13 @@
 
   .body {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 260px;
+    grid-template-columns: minmax(0, 1fr) 240px;
     gap: var(--sp-3);
     min-height: 0;
   }
   .sim-frame {
-    min-height: 240px;
-    max-height: 360px;
+    aspect-ratio: 4 / 3;
+    width: 100%;
     background: var(--color-surface-2);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
@@ -448,6 +450,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    overflow: hidden;
   }
   canvas { max-width: 100%; max-height: 100%; display: block; border-radius: var(--radius-sm); }
 
@@ -559,7 +562,12 @@
     accent-color: var(--color-accent);
   }
 
-  @media (max-width: 760px) {
+  @media (max-width: 900px) {
     .body { grid-template-columns: 1fr; }
+    .sim-frame { aspect-ratio: 16 / 10; }
+  }
+  @media (max-width: 520px) {
+    .scrubber { flex-wrap: wrap; }
+    .range { flex: 1 1 100%; order: 2; }
   }
 </style>

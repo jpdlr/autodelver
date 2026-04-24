@@ -26,9 +26,23 @@
   const isFirstRun = $derived(
     game.meta.totalRuns === 0 && !game.meta.tutorialCompleted,
   );
-  const leaderboard = $derived(
-    game.onlineRankings.length ? game.onlineRankings.slice(0, 10) : game.meta.runHistory.slice(0, 5),
-  );
+  // One row per player (their best run). For online rankings that's done
+  // server-side query + dedup; for the local fallback we dedup over
+  // runHistory so repeat runs by the same player don't repeat on the board.
+  const leaderboard = $derived.by(() => {
+    if (game.onlineRankings.length) return game.onlineRankings.slice(0, 10);
+    const best = new Map<string, typeof game.meta.runHistory[number]>();
+    for (const r of game.meta.runHistory) {
+      const key = r.playerId || r.username;
+      const prev = best.get(key);
+      const score = r.depth * 1_000_000 - r.ticks;
+      const prevScore = prev ? prev.depth * 1_000_000 - prev.ticks : -Infinity;
+      if (!prev || score > prevScore) best.set(key, r);
+    }
+    return [...best.values()]
+      .sort((a, b) => b.depth - a.depth || a.ticks - b.ticks)
+      .slice(0, 5);
+  });
 
   interface Classmeta {
     cls: 'warrior' | 'ranger' | 'cleric';
