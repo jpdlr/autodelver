@@ -27,8 +27,8 @@
     sprite: SpriteId;
   }
   const party: Classmeta[] = [
-    { cls: 'warrior', name: 'Grimm', role: 'Tank', blurb: 'Front-line. High armour. Takes the hits.', hp: 45, atk: 7, range: 1, mp: 0, sprite: 'grimm-warrior' },
-    { cls: 'ranger', name: 'Vex', role: 'DPS', blurb: 'Fragile. Deadly from three tiles away. Needs a tank.', hp: 30, atk: 8, range: 3, mp: 0, sprite: 'vex-ranger' },
+    { cls: 'warrior', name: 'Grimm', role: 'Tank', blurb: 'Front-line. High armour. Takes the hits.', hp: 45, atk: 7, range: 1, mp: 0, abilities: ['Heavy armour', 'Melee only'], sprite: 'grimm-warrior' },
+    { cls: 'ranger', name: 'Vex', role: 'DPS', blurb: 'Fragile. Deadly from three tiles away. Needs a tank.', hp: 30, atk: 8, range: 3, mp: 0, abilities: ['Ranged 3', 'Glass cannon'], sprite: 'vex-ranger' },
     { cls: 'cleric', name: 'Mira', role: 'Support', blurb: 'Short-range support. Heals wounds and can revive once per depth.', hp: 30, atk: 5, range: 2, mp: 10, abilities: ['Heal 5 HP', 'Revive 5 HP'], sprite: 'mira-cleric' },
   ];
 </script>
@@ -95,19 +95,29 @@
             </div>
           </div>
           <div class="role-blurb">{p.blurb}</div>
-          <div class="role-stats">
-            <div class="stat-cell"><span class="lbl">HP</span><span class="val">{p.hp}</span></div>
-            <div class="stat-cell"><span class="lbl">ATK</span><span class="val">{p.atk}</span></div>
-            <div class="stat-cell"><span class="lbl">RNG</span><span class="val">{p.range}</span></div>
-            <div class="stat-cell"><span class="lbl">MP</span><span class="val">{p.mp}</span></div>
-          </div>
-          {#if p.abilities}
-            <div class="role-abilities">
-              {#each p.abilities as ab}
-                <span class="ability-chip">{ab}</span>
-              {/each}
+          <div class="role-footer">
+            <div class="role-section">
+              <div class="section-label">Stats</div>
+              <div class="role-stats">
+                <div class="stat-cell"><span class="lbl">HP</span><span class="val">{p.hp}</span></div>
+                <div class="stat-cell"><span class="lbl">ATK</span><span class="val">{p.atk}</span></div>
+                <div class="stat-cell"><span class="lbl">RNG</span><span class="val">{p.range}</span></div>
+                <div class="stat-cell"><span class="lbl">MP</span><span class="val">{p.mp}</span></div>
+              </div>
             </div>
-          {/if}
+            <div class="role-section">
+              <div class="section-label">Abilities</div>
+              <div class="role-abilities">
+                {#if p.abilities && p.abilities.length}
+                  {#each p.abilities as ab}
+                    <span class="ability-chip">{ab}</span>
+                  {/each}
+                {:else}
+                  <span class="ability-empty">—</span>
+                {/if}
+              </div>
+            </div>
+          </div>
         </div>
       {/each}
     </div>
@@ -444,13 +454,31 @@
     color: var(--color-text-muted);
     font-size: var(--fs-sm);
     line-height: 1.5;
+    flex: 1; /* push role-footer to bottom so all three cards line up */
+  }
+  .role-footer {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-3);
+    padding-top: var(--sp-3);
+    border-top: 1px solid var(--color-border);
+  }
+  .role-section {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .section-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--color-text-subtle);
   }
   .role-stats {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 6px;
-    padding-top: var(--sp-3);
-    border-top: 1px dashed var(--color-border);
   }
   .stat-cell {
     display: flex;
@@ -458,7 +486,7 @@
     align-items: center;
     justify-content: center;
     gap: 2px;
-    padding: 6px 4px;
+    padding: 8px 4px;
     background: var(--color-surface-2);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-sm);
@@ -481,12 +509,12 @@
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
-    margin-top: 2px;
+    min-height: 26px; /* keeps layout stable even when a card has no abilities */
   }
   .ability-chip {
     display: inline-flex;
     align-items: center;
-    padding: 3px 8px;
+    padding: 4px 10px;
     background: color-mix(in srgb, currentColor 12%, transparent);
     color: currentColor;
     border: 1px solid color-mix(in srgb, currentColor 35%, transparent);
@@ -496,6 +524,14 @@
     font-weight: 600;
     letter-spacing: 0.06em;
     text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .ability-empty {
+    display: inline-flex;
+    align-items: center;
+    color: var(--color-text-subtle);
+    font-family: var(--font-mono);
+    font-size: 12px;
   }
 
   /* ─── STEPS ───────────────────────────────── */
