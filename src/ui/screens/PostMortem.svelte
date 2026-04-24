@@ -124,14 +124,12 @@
 <style>
   .pm {
     height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    overflow-y: auto;
     padding: var(--sp-6);
-    overflow: auto;
   }
   .pm-card {
     width: min(880px, 100%);
+    margin: 0 auto;
     display: flex;
     flex-direction: column;
     gap: var(--sp-5);

@@ -24,13 +24,19 @@ export function rankingScore(run: Pick<RunRecord, 'depth' | 'ticks'>): number {
 export async function submitRanking(run: RunRecord): Promise<void> {
   const db = firestoreDb();
   if (!db) return;
-  const entry: RankingEntry = {
-    ...run,
-    username: sanitizeUsername(run.username),
-    score: rankingScore(run),
-  };
+  // Firestore rules require hasOnly() on a fixed key set — be explicit
+  // rather than spreading `run`, which now carries extras like
+  // launchScripts that would fail validation.
   await setDoc(doc(db, COLLECTION, run.id), {
-    ...entry,
+    id: run.id,
+    playerId: run.playerId,
+    username: sanitizeUsername(run.username),
+    depth: run.depth,
+    ticks: run.ticks,
+    insightEarned: run.insightEarned,
+    causeOfDeath: run.causeOfDeath.slice(0, 240),
+    finishedAt: run.finishedAt,
+    score: rankingScore(run),
     submittedAt: serverTimestamp(),
   });
 }
