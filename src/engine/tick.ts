@@ -4,6 +4,7 @@ import { isWalkable, posEq, distCheb, neighbours, distManhattan } from './grid';
 import { findPath } from './pathfind';
 import { resolveAttack } from './combat';
 import { entityAt } from './world';
+import { DOWN, ENEMY_AI, HEAL, REGEN, REVIVE } from './balance';
 
 export interface TickInput {
   delverActions: Map<string, Action>;
@@ -115,12 +116,12 @@ function applyDelverAction(world: World, d: Delver, action: Action, rng: Rng): v
     }
     case 'heal': {
       if (d.class !== 'cleric') return;
-      if (d.mp < 2 || d.cooldowns.heal > 0) return;
+      if (d.mp < HEAL.MP_COST || d.cooldowns.heal > 0) return;
       const target = world.delvers.find((ally) => ally.id === action.target && ally.hp > 0);
       if (!target || distCheb(d.pos, target.pos) > d.range || target.hp >= target.maxHp) return;
-      d.mp -= 2;
-      d.cooldowns.heal = 4;
-      const amount = Math.min(5, target.maxHp - target.hp);
+      d.mp -= HEAL.MP_COST;
+      d.cooldowns.heal = HEAL.COOLDOWN_TICKS;
+      const amount = Math.min(HEAL.AMOUNT, target.maxHp - target.hp);
       target.hp += amount;
       world.events.push({
         tick: world.tick,
@@ -128,20 +129,21 @@ function applyDelverAction(world: World, d: Delver, action: Action, rng: Rng): v
         actorId: d.id,
         targetId: target.id,
         message: `${d.name} heals ${target.name} for ${amount} HP`,
-        data: { amount, mpCost: 2, cooldown: 4 },
+        data: { amount, mpCost: HEAL.MP_COST, cooldown: HEAL.COOLDOWN_TICKS },
       });
       return;
     }
     case 'revive': {
       if (d.class !== 'cleric') return;
-      if (d.mp < 10 || d.reviveUsedDepth === world.depth) return;
+      if (d.mp < REVIVE.MP_COST || d.reviveUsedDepth === world.depth) return;
       const target = world.delvers.find((ally) => ally.id === action.target && ally.hp === 0);
       if (!target || target.id === d.id || distCheb(d.pos, target.pos) > d.range) return;
-      d.mp -= 10;
+      d.mp -= REVIVE.MP_COST;
       d.reviveUsedDepth = world.depth;
-      // Revive restores ~40% of max HP, capped — now that death persists
-      // across floors, 5 HP felt too thin to survive the next swing.
-      target.hp = Math.min(Math.max(12, Math.floor(target.maxHp * 0.4)), target.maxHp);
+      target.hp = Math.min(
+        Math.max(REVIVE.MIN_HP, Math.floor(target.maxHp * REVIVE.HP_FRACTION)),
+        target.maxHp,
+      );
       target.downedFor = 0;
       world.events.push({
         tick: world.tick,
@@ -149,7 +151,7 @@ function applyDelverAction(world: World, d: Delver, action: Action, rng: Rng): v
         actorId: d.id,
         targetId: target.id,
         message: `${d.name} revives ${target.name} with ${target.hp} HP`,
-        data: { amount: target.hp, mpCost: 10, oncePerDepth: true },
+        data: { amount: target.hp, mpCost: REVIVE.MP_COST, oncePerDepth: true },
       });
       return;
     }
@@ -177,7 +179,7 @@ function applyEnemyAction(world: World, e: Enemy, rng: Rng): void {
       target = d;
     }
   }
-  if (!target || bestDist > 12) return;
+  if (!target || bestDist > ENEMY_AI.AGGRO_RANGE_MANH) return;
 
   // Adjacent? Attack.
   if (distCheb(e.pos, target.pos) === 1) {
@@ -185,6 +187,10 @@ function applyEnemyAction(world: World, e: Enemy, rng: Rng): void {
     world.events.push(...res.events);
     return;
   }
+
+  // Bosses anchor on the stairs and never give chase. The stairs room is
+  // the arena — you have to come to them, and you can't slip past.
+  if (e.isBoss) return;
 
   // Otherwise step toward target along a simple greedy pathfind.
   const path = findPath(world.grid, e.pos, target.pos);
@@ -223,7 +229,7 @@ function postTick(world: World): void {
   // Death logging for delvers
   for (const d of world.delvers) {
     if (d.hp === 0 && d.downedFor === 0) {
-      d.downedFor = 20;
+      d.downedFor = DOWN.REVIVE_WINDOW;
       world.events.push({
         tick: world.tick,
         kind: 'death',
@@ -233,20 +239,18 @@ function postTick(world: World): void {
     }
   }
 
-  // MP regen: +1 every 10 ticks for any living delver below max.
-  if (world.tick % 10 === 0) {
+  if (world.tick % REGEN.MP_EVERY_TICKS === 0) {
     for (const d of world.delvers) {
       if (d.hp > 0 && d.mp < d.maxMp) d.mp++;
     }
   }
 
-  // HP regen out-of-combat
   const anyEnemyNear = world.delvers.some((d) =>
-    world.enemies.some((e) => e.hp > 0 && distCheb(d.pos, e.pos) <= 4),
+    world.enemies.some((e) => e.hp > 0 && distCheb(d.pos, e.pos) <= REGEN.OOC_THRESHOLD_CHEB),
   );
   if (!anyEnemyNear) {
     for (const d of world.delvers) {
-      if (d.hp > 0 && d.hp < d.maxHp && world.tick % 3 === 0) d.hp++;
+      if (d.hp > 0 && d.hp < d.maxHp && world.tick % REGEN.HP_EVERY_TICKS === 0) d.hp++;
     }
   }
 

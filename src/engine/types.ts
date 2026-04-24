@@ -84,6 +84,16 @@ export interface LogEvent {
 
 export type RunStatus = 'running' | 'cleared' | 'wiped';
 
+/** A message broadcast from one delver's tick() to the rest of the party.
+ *  Delivered to allies on the NEXT tick, never the same tick, to avoid
+ *  ordering ambiguity. Payload is serialized via JSON (no functions/Maps). */
+export interface Signal {
+  from: EntityId;
+  name: string;
+  payload: unknown;
+  tick: number;
+}
+
 export interface World {
   seed: string;
   depth: number;

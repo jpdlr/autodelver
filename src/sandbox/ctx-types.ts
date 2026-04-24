@@ -30,6 +30,18 @@ interface Self extends EntitySnapshot {
   reviveReady: boolean;
 }
 
+/** A signal broadcast from another delver on the previous tick. */
+interface Signal {
+  /** ID of the delver who broadcast the signal. */
+  from: string;
+  /** Name passed to ctx.signal(). */
+  name: string;
+  /** Payload passed to ctx.signal() (JSON-serializable). */
+  payload: any;
+  /** Tick number when the signal was broadcast (always tick - 1). */
+  tick: number;
+}
+
 /** Per-tick snapshot of the world, visible to your delver. */
 interface Context {
   /** Current tick number (monotonic, increases each turn). */
@@ -50,6 +62,11 @@ interface Context {
   memory: Record<string, any>;
   /** List of API identifiers you have unlocked this run (e.g. 'memory', 'signal'). */
   unlocked: string[];
+  /** Signals broadcast by allies during the previous tick. Never includes your own. */
+  signals: Signal[];
+  /** Broadcast a named message to other delvers. Delivered next tick via ctx.signals.
+   *  Payload must be JSON-serializable (no functions, Maps, etc). */
+  signal(name: string, payload?: any): void;
 }
 
 /** Actions are plain data returned from tick(). Return one or nothing (= wait). */

@@ -1,4 +1,4 @@
-import type { Action, Delver, EntityId, LogEvent, World } from '../engine/types';
+import type { Action, Delver, EntityId, LogEvent, Signal, World } from '../engine/types';
 import { buildSnapshot } from './ctx';
 
 /**
@@ -16,9 +16,18 @@ interface DelverWorker {
 export class SandboxHost {
   private workers = new Map<EntityId, DelverWorker>();
   private budgetMs: number;
+  /** Signals broadcast on the previous tick, visible to all workers this
+   *  tick. Reset between floors via resetSignals(). */
+  private lastTickSignals: Signal[] = [];
 
   constructor(opts: { budgetMs?: number } = {}) {
     this.budgetMs = opts.budgetMs ?? 50;
+  }
+
+  /** Clear the signal buffer. Call between floor transitions so signals
+   *  from the previous floor don't bleed into the new one. */
+  resetSignals(): void {
+    this.lastTickSignals = [];
   }
 
   async load(delver: Delver): Promise<void> {
@@ -77,6 +86,8 @@ export class SandboxHost {
   }> {
     const actions = new Map<EntityId, Action>();
     const events: LogEvent[] = [];
+    const newSignals: Signal[] = [];
+    const visibleSignals = this.lastTickSignals;
     await Promise.all(
       world.delvers
         .filter((d) => d.hp > 0)
@@ -90,11 +101,21 @@ export class SandboxHost {
             world.stairs,
             world.entrance,
             unlocked,
+            visibleSignals,
           );
           try {
-            const action = await this.queryTick(d.id, snapshot);
-            const validated = validateAction(action);
+            const result = await this.queryTick(d.id, snapshot);
+            const validated = validateAction(result.action);
             if (validated) actions.set(d.id, validated);
+            for (const s of result.signals) {
+              if (typeof s?.name !== 'string') continue;
+              newSignals.push({
+                from: d.id,
+                name: s.name,
+                payload: s.payload,
+                tick: world.tick,
+              });
+            }
           } catch (err) {
             const message = err instanceof Error ? err.message : String(err);
             events.push({
@@ -106,10 +127,14 @@ export class SandboxHost {
           }
         }),
     );
+    this.lastTickSignals = newSignals;
     return { actions, events };
   }
 
-  private async queryTick(delverId: EntityId, snapshot: unknown): Promise<unknown> {
+  private async queryTick(
+    delverId: EntityId,
+    snapshot: unknown,
+  ): Promise<{ action: unknown; signals: Array<{ name: string; payload: unknown }> }> {
     const dw = this.workers.get(delverId);
     if (!dw) throw new Error('no worker loaded');
     await dw.ready;
@@ -122,7 +147,7 @@ export class SandboxHost {
         if (ev.data?.type === 'action') {
           clearTimeout(timer);
           dw.worker.removeEventListener('message', onMsg);
-          resolve(ev.data.action);
+          resolve({ action: ev.data.action, signals: ev.data.signals ?? [] });
         } else if (ev.data?.type === 'error') {
           clearTimeout(timer);
           dw.worker.removeEventListener('message', onMsg);

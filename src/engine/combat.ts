@@ -1,5 +1,6 @@
 import type { Entity, LogEvent } from './types';
 import { type Rng } from './rng';
+import { COMBAT } from './balance';
 
 export interface AttackResult {
   damage: number;
@@ -8,20 +9,18 @@ export interface AttackResult {
   events: LogEvent[];
 }
 
-/**
- * Deterministic combat resolution.
- *   damage = max(1, attack + roll - armor), roll in [-2..+2], 10% crit → *1.5 floored.
- */
+/** Deterministic combat resolution. See COMBAT in balance.ts for knobs. */
 export function resolveAttack(
   tick: number,
   attacker: Entity,
   target: Entity,
   rng: Rng,
 ): AttackResult {
-  const roll = Math.floor(rng() * 5) - 2; // -2..+2
-  const crit = rng() < 0.1;
+  const rollRange = COMBAT.ROLL_MAX - COMBAT.ROLL_MIN + 1;
+  const roll = Math.floor(rng() * rollRange) + COMBAT.ROLL_MIN;
+  const crit = rng() < COMBAT.CRIT_CHANCE;
   let dmg = Math.max(1, attacker.attack + roll - target.armor);
-  if (crit) dmg = Math.floor(dmg * 1.5);
+  if (crit) dmg = Math.floor(dmg * COMBAT.CRIT_MULTIPLIER);
 
   target.hp = Math.max(0, target.hp - dmg);
   const killed = target.hp === 0;

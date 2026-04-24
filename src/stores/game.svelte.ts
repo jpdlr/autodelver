@@ -1,6 +1,7 @@
 import type { Delver, LogEvent, RunTrace, TickFrame, World } from '../engine/types';
 import { advanceTick } from '../engine/tick';
 import { createWorld, isBossFloor, spawnDelver } from '../engine/world';
+import { CLASS_STATS, SANDBOX } from '../engine/balance';
 import { SandboxHost } from '../sandbox/host';
 import { loadMeta, saveMeta } from '../persistence/meta';
 import { loadScript } from '../persistence/scripts';
@@ -279,7 +280,7 @@ function createGame() {
 
   async function startRun(): Promise<void> {
     host?.dispose();
-    host = new SandboxHost({ budgetMs: 80 });
+    host = new SandboxHost({ budgetMs: SANDBOX.BUDGET_MS });
     editingMidRun = false;
     bossesClearedThisRun = 0;
     const seed = `run-${Date.now()}`;
@@ -289,39 +290,39 @@ function createGame() {
         name: 'Grimm',
         pos: { x: 0, y: 0 },
         script: scripts.warrior,
-        hp: 55,
-        maxHp: 55,
-        mp: 0,
-        maxMp: 0,
-        attack: 10,
-        armor: 4,
-        range: 1,
+        hp: CLASS_STATS.warrior.hp,
+        maxHp: CLASS_STATS.warrior.hp,
+        mp: CLASS_STATS.warrior.mp,
+        maxMp: CLASS_STATS.warrior.mp,
+        attack: CLASS_STATS.warrior.attack,
+        armor: CLASS_STATS.warrior.armor,
+        range: CLASS_STATS.warrior.range,
       }),
       spawnDelver({
         class: 'ranger',
         name: 'Vex',
         pos: { x: 0, y: 0 },
         script: scripts.ranger,
-        hp: 34,
-        maxHp: 34,
-        mp: 0,
-        maxMp: 0,
-        attack: 11,
-        armor: 1,
-        range: 3,
+        hp: CLASS_STATS.ranger.hp,
+        maxHp: CLASS_STATS.ranger.hp,
+        mp: CLASS_STATS.ranger.mp,
+        maxMp: CLASS_STATS.ranger.mp,
+        attack: CLASS_STATS.ranger.attack,
+        armor: CLASS_STATS.ranger.armor,
+        range: CLASS_STATS.ranger.range,
       }),
       spawnDelver({
         class: 'cleric',
         name: 'Mira',
         pos: { x: 0, y: 0 },
         script: scripts.cleric,
-        hp: 34,
-        maxHp: 34,
-        mp: 12,
-        maxMp: 12,
-        attack: 6,
-        armor: 2,
-        range: 2,
+        hp: CLASS_STATS.cleric.hp,
+        maxHp: CLASS_STATS.cleric.hp,
+        mp: CLASS_STATS.cleric.mp,
+        maxMp: CLASS_STATS.cleric.mp,
+        attack: CLASS_STATS.cleric.attack,
+        armor: CLASS_STATS.cleric.armor,
+        range: CLASS_STATS.cleric.range,
       }),
     ];
     try {
@@ -367,6 +368,9 @@ function createGame() {
 
   async function descendNextFloor(): Promise<void> {
     if (!world || !host) return;
+    // Signals don't carry across floors — clear the buffer before the new
+    // world spins up, same way cooldowns and revive-used are reset.
+    host.resetSignals();
     // Count any boss the party cleared on this floor for the end-of-run
     // bonus. Checked before we rebuild the world.
     if (isBossFloor(world.depth)) bossesClearedThisRun++;

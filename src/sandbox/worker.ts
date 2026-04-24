@@ -34,8 +34,13 @@ type Msg =
   | { type: 'tick'; snapshot: unknown }
   | { type: 'deploy'; snapshot: unknown };
 
+interface OutgoingSignal {
+  name: string;
+  payload: unknown;
+}
+
 type WorkerResponse =
-  | { type: 'action'; action: unknown }
+  | { type: 'action'; action: unknown; signals: OutgoingSignal[] }
   | { type: 'ready' }
   | { type: 'error'; message: string; line?: number };
 
@@ -96,12 +101,35 @@ self.onmessage = (ev: MessageEvent<Msg>) => {
   }
   if (msg.type === 'tick') {
     if (!compiledTick) {
-      reply(null, { type: 'action', action: { type: 'wait' } });
+      reply(null, { type: 'action', action: { type: 'wait' }, signals: [] });
       return;
     }
+    const outgoing: OutgoingSignal[] = [];
+    // Wrap the snapshot with a signal() function. Functions can't survive
+    // postMessage, so signal has to be attached on the worker side.
+    const ctx =
+      typeof msg.snapshot === 'object' && msg.snapshot !== null
+        ? {
+            ...(msg.snapshot as Record<string, unknown>),
+            signal: (name: unknown, payload?: unknown) => {
+              if (typeof name !== 'string' || name.length === 0) return;
+              // Cap per-tick broadcasts so a bug can't fill memory.
+              if (outgoing.length >= 32) return;
+              // JSON round-trip now so a bad payload throws in the user's
+              // script, not opaquely inside the host postMessage.
+              let safe: unknown;
+              try {
+                safe = payload === undefined ? undefined : JSON.parse(JSON.stringify(payload));
+              } catch {
+                return;
+              }
+              outgoing.push({ name, payload: safe });
+            },
+          }
+        : msg.snapshot;
     try {
-      const action = compiledTick(msg.snapshot);
-      reply(null, { type: 'action', action: action ?? { type: 'wait' } });
+      const action = compiledTick(ctx);
+      reply(null, { type: 'action', action: action ?? { type: 'wait' }, signals: outgoing });
     } catch (err) {
       reply(null, {
         type: 'error',

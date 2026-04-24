@@ -1,6 +1,14 @@
 import type { Delver, Enemy, EnemyArchetype, Pos, World } from './types';
 import { type Rng, rngInt, rngPick, sfc32 } from './rng';
 import { generateDungeon, pickSpawnsInRooms } from './dungeon';
+import {
+  BOSS,
+  DEPTH_SCALING,
+  DUNGEON,
+  ENEMY_STATS,
+  SPAWN,
+  archetypePoolForDepth,
+} from './balance';
 
 let entityCounter = 0;
 function nextId(prefix: string): string {
@@ -12,39 +20,15 @@ export function resetEntityCounter(): void {
   entityCounter = 0;
 }
 
-const ENEMY_STATS: Record<EnemyArchetype, { hp: number; atk: number; armor: number }> = {
-  slime:  { hp: 8,  atk: 3, armor: 0 },
-  goblin: { hp: 12, atk: 5, armor: 1 },
-  wraith: { hp: 18, atk: 7, armor: 2 },
-  brute:  { hp: 28, atk: 9, armor: 3 },
-  lich:   { hp: 22, atk: 10, armor: 2 },
-};
-
-/** Weighted archetype pool by depth. Entries appear as they unlock and
- *  higher-tier archetypes weight up so late floors feel distinctly nastier. */
-function archetypePoolForDepth(depth: number): EnemyArchetype[] {
-  const pool: EnemyArchetype[] = [];
-  pool.push('slime', 'slime', 'goblin');
-  if (depth >= 2) pool.push('goblin');
-  if (depth >= 3) pool.push('wraith');
-  if (depth >= 4) pool.push('wraith');
-  if (depth >= 5) pool.push('brute');
-  if (depth >= 6) pool.push('goblin', 'wraith');
-  if (depth >= 7) pool.push('lich');
-  if (depth >= 9) pool.push('brute', 'lich');
-  if (depth >= 12) pool.push('brute', 'lich', 'wraith');
-  return pool;
-}
-
 export function isBossFloor(depth: number): boolean {
-  return depth > 0 && depth % 5 === 0;
+  return depth > 0 && depth % DUNGEON.BOSS_EVERY === 0;
 }
 
 /** Pick the boss archetype for a given depth. Cycles through the heavy
  *  hitters so each boss floor feels distinct. */
 function bossArchetypeForDepth(depth: number): EnemyArchetype {
-  const cycle: EnemyArchetype[] = ['brute', 'wraith', 'lich', 'brute', 'lich'];
-  return cycle[(Math.floor(depth / 5) - 1) % cycle.length] ?? 'brute';
+  const cycle = BOSS.ROTATION;
+  return cycle[(Math.floor(depth / DUNGEON.BOSS_EVERY) - 1) % cycle.length] ?? 'brute';
 }
 
 export function spawnDelver(partial: Partial<Delver> & Pick<Delver, 'class' | 'name' | 'script' | 'pos'>): Delver {
@@ -79,14 +63,11 @@ export function spawnEnemy(
   opts: { boss?: boolean } = {},
 ): Enemy {
   const s = ENEMY_STATS[archetype];
-  // Slightly softer depth curve than before (10% per depth vs 15%) so the
-  // ramp stays fair for a well-tuned script.
-  const depthScale = 1 + (depth - 1) * 0.10;
+  const depthScale = 1 + (depth - 1) * DEPTH_SCALING.PER_DEPTH;
   const boss = opts.boss ?? false;
-  // Boss: 2.5× HP, +35% attack, +1 armor. Boss still scales with depth.
-  const hpMul = boss ? 2.5 : 1;
-  const atkMul = boss ? 1.35 : 1;
-  const armorBonus = boss ? 1 : 0;
+  const hpMul = boss ? BOSS.HP_MULTIPLIER : 1;
+  const atkMul = boss ? BOSS.ATK_MULTIPLIER : 1;
+  const armorBonus = boss ? BOSS.ARMOR_BONUS : 0;
   return {
     id: nextId('e'),
     kind: 'enemy',
@@ -113,13 +94,16 @@ export function createWorld(params: NewRunParams): World {
   // Dungeons grow subtly with depth so late floors breathe more.
   // Boss floors get a larger grid with fewer, bigger rooms — the goal
   // is a dedicated arena for the boss encounter.
-  const sizeBump = Math.min(8, Math.floor((params.depth - 1) / 3));
+  const sizeBump = Math.min(
+    DUNGEON.SIZE_BUMP_CAP,
+    Math.floor((params.depth - 1) / DUNGEON.SIZE_BUMP_EVERY),
+  );
   const dungeon = generateDungeon(rng, {
-    width: (boss ? 54 : 48) + sizeBump,
-    height: (boss ? 32 : 28) + Math.floor(sizeBump / 2),
-    minRoomSize: boss ? 7 : 5 + Math.floor(sizeBump / 4),
-    maxRoomSize: boss ? 13 : 9 + Math.floor(sizeBump / 3),
-    roomAttempts: boss ? 8 : 16,
+    width: (boss ? DUNGEON.BOSS_WIDTH : DUNGEON.NORMAL_WIDTH) + sizeBump,
+    height: (boss ? DUNGEON.BOSS_HEIGHT : DUNGEON.NORMAL_HEIGHT) + Math.floor(sizeBump / 2),
+    minRoomSize: boss ? DUNGEON.BOSS_MIN_ROOM : DUNGEON.NORMAL_MIN_ROOM + Math.floor(sizeBump / 4),
+    maxRoomSize: boss ? DUNGEON.BOSS_MAX_ROOM : DUNGEON.NORMAL_MAX_ROOM + Math.floor(sizeBump / 3),
+    roomAttempts: boss ? DUNGEON.BOSS_ROOM_ATTEMPTS : DUNGEON.NORMAL_ROOM_ATTEMPTS,
   });
 
   // Place delvers at entrance in a tight cluster of walkable tiles
@@ -147,7 +131,7 @@ export function createWorld(params: NewRunParams): World {
     const bossArch = bossArchetypeForDepth(params.depth);
     // Boss sits in the far (stairs) room.
     enemies.push(spawnEnemy(bossArch, dungeon.stairs, params.depth, rngInt(rng, 0, 1e9), { boss: true }));
-    const minionCount = 2 + Math.floor(params.depth / 5);
+    const minionCount = SPAWN.BOSS_MINION_BASE + Math.floor(params.depth / SPAWN.BOSS_MINION_PER_DIV);
     const minionPositions = pickSpawnsInRooms(dungeon.rooms, rng, minionCount, [
       dungeon.entrance,
       dungeon.stairs,
@@ -157,8 +141,7 @@ export function createWorld(params: NewRunParams): World {
       enemies.push(spawnEnemy(archetype, pos, params.depth, rngInt(rng, 0, 1e9)));
     }
   } else {
-    // Lighter spawn density so floors don't become attrition grinders.
-    const enemyCount = 2 + Math.floor(params.depth * 1.2);
+    const enemyCount = SPAWN.NORMAL_BASE + Math.floor(params.depth * SPAWN.NORMAL_PER_DEPTH);
     const spawnPositions = pickSpawnsInRooms(dungeon.rooms, rng, enemyCount, [dungeon.entrance]);
     for (const pos of spawnPositions) {
       const archetype = rngPick<EnemyArchetype>(rng, pool);

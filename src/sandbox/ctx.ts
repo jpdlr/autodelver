@@ -1,4 +1,4 @@
-import type { Action, Delver, Enemy, EntityId, Pos } from '../engine/types';
+import type { Action, Delver, Enemy, EntityId, Pos, Signal } from '../engine/types';
 
 export interface CtxEntitySnapshot {
   id: EntityId;
@@ -34,6 +34,9 @@ export interface CtxSnapshot {
   entrance: Pos;
   memory: Record<string, unknown>;
   unlocked: string[];
+  /** Signals broadcast by allies during the PREVIOUS tick. Never includes
+   *  signals from self. Empty array if none or on the first tick. */
+  signals: Signal[];
 }
 
 export function buildSnapshot(
@@ -45,6 +48,7 @@ export function buildSnapshot(
   stairs: Pos,
   entrance: Pos,
   unlocked: Set<string>,
+  signals: Signal[],
 ): CtxSnapshot {
   // Deep-unproxy via JSON round-trip — Svelte 5 $state objects are Proxies
   // that can't be structured-cloned across postMessage.
@@ -90,6 +94,8 @@ export function buildSnapshot(
     entrance: { x: entrance.x, y: entrance.y },
     memory: JSON.parse(JSON.stringify(self.memory ?? {})),
     unlocked: [...unlocked],
+    // Filter at build time so each worker only sees signals from OTHER delvers.
+    signals: signals.filter((s) => s.from !== self.id),
   };
   return snapshot;
 }
