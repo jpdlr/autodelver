@@ -1,5 +1,6 @@
 <script lang="ts">
   import Home from './ui/screens/Home.svelte';
+  import Tutorial from './ui/screens/Tutorial.svelte';
   import Loadout from './ui/screens/Loadout.svelte';
   import Run from './ui/screens/Run.svelte';
   import PostMortem from './ui/screens/PostMortem.svelte';
@@ -16,6 +17,8 @@
   <main>
     {#if game.screen === 'home'}
       <Home />
+    {:else if game.screen === 'tutorial'}
+      <Tutorial />
     {:else if game.screen === 'loadout'}
       <Loadout />
     {:else if game.screen === 'run'}

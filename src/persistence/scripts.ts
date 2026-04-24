@@ -33,6 +33,23 @@ function _leader(ctx) {
 `;
 
 export const DEFAULT_SCRIPTS: Record<DelverClass, string> = {
+  warrior: `function tick(ctx) {
+  return { type: 'wait' };
+}
+`,
+
+  ranger: `function tick(ctx) {
+  return { type: 'wait' };
+}
+`,
+
+  cleric: `function tick(ctx) {
+  return { type: 'wait' };
+}
+`,
+};
+
+export const TUTORIAL_SCRIPTS: Record<DelverClass, string> = {
   warrior: `// Warrior — front-line tank. Engages anything nearby.
 ${HELPERS}
 
@@ -110,6 +127,17 @@ function tick(ctx) {
 }
 `,
 };
+
+export function clearSavedScripts(): Record<DelverClass, string> {
+  try {
+    localStorage.removeItem(KEY_PREFIX + 'warrior');
+    localStorage.removeItem(KEY_PREFIX + 'ranger');
+    localStorage.removeItem(KEY_PREFIX + 'cleric');
+  } catch {
+    /* ignore */
+  }
+  return DEFAULT_SCRIPTS;
+}
 
 export function loadScript(cls: DelverClass): string {
   try {

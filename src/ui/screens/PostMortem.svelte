@@ -100,9 +100,18 @@
     {/if}
 
     <div class="actions">
-      <button type="button" class="ghost" onclick={home}>Home</button>
-      <button type="button" class="ghost" onclick={edit}>Edit scripts</button>
-      <button type="button" class="primary" onclick={retry}>Descend again</button>
+      <button type="button" class="secondary" onclick={home}>
+        <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><path d="M2.5 8L8 3l5.5 5M4 7v6h8V7" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>Home</span>
+      </button>
+      <button type="button" class="secondary" onclick={edit}>
+        <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><path d="M3 13l2-0.5 7-7-1.5-1.5-7 7L3 13zM10.5 3.5l1.5-1.5 1.5 1.5-1.5 1.5z" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linejoin="round"/></svg>
+        <span>Edit scripts</span>
+      </button>
+      <button type="button" class="primary" onclick={retry}>
+        <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><path d="M13 8a5 5 0 1 1-1.5-3.5M13 3v3h-3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
+        <span>Descend again</span>
+      </button>
     </div>
   </div>
 </section>
@@ -368,16 +377,36 @@
     display: flex;
     gap: var(--sp-2);
     justify-content: flex-end;
-    padding-top: var(--sp-2);
+    align-items: center;
+    padding-top: var(--sp-4);
     border-top: 1px solid var(--color-border);
   }
-  .actions .primary {
-    padding: var(--sp-3) var(--sp-5);
+  .actions button {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
     font-weight: 600;
+    letter-spacing: 0.01em;
   }
+  .actions .secondary {
+    background: var(--color-surface-2);
+    color: var(--color-text);
+    border: 1px solid var(--color-border);
+  }
+  .actions .secondary:hover:not(:disabled) {
+    background: var(--color-surface-3);
+    border-color: var(--color-border-strong);
+    color: var(--color-text);
+  }
+  .actions .primary {
+    padding: 10px 20px;
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-accent) 18%, transparent);
+  }
+  .actions svg { flex-shrink: 0; }
   @media (max-width: 540px) {
     .actions { justify-content: stretch; flex-direction: column-reverse; }
-    .actions button { width: 100%; }
+    .actions button { width: 100%; justify-content: center; }
     .summary-grid { grid-template-columns: 1fr; }
   }
 </style>

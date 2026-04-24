@@ -6,7 +6,7 @@ import { loadMeta, saveMeta } from '../persistence/meta';
 import { loadScript } from '../persistence/scripts';
 import { DEFAULT_META, type MetaProgression, type DelverClass } from '../engine/types';
 
-export type Screen = 'home' | 'loadout' | 'run' | 'postmortem';
+export type Screen = 'home' | 'tutorial' | 'loadout' | 'run' | 'postmortem';
 
 export interface RunSummary {
   depth: number;
@@ -139,7 +139,7 @@ function createGame() {
         script: scripts.cleric,
         hp: 30,
         maxHp: 30,
-        mp: 14,
+        mp: 10,
         maxMp: 10,
         attack: 5,
         armor: 2,
@@ -200,6 +200,9 @@ function createGame() {
     },
     setScript(cls: DelverClass, script: string): void {
       scripts = { ...scripts, [cls]: script };
+    },
+    setScripts(next: Record<DelverClass, string>): void {
+      scripts = { ...next };
     },
     openMidRunEditor(): void {
       if (!world || world.status !== 'running') return;
