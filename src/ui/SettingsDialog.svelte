@@ -69,7 +69,6 @@
         <span class="pct">{Math.round(audio.settings.musicVolume * 100)}%</span>
       </label>
 
-      <p class="hint">Sound synthesises on the fly — no downloads. Runs only start making noise after your first click (browser policy).</p>
     </section>
 
     <footer class="foot">

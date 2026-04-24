@@ -123,6 +123,8 @@ export class AudioEngine {
     starts.push(sub);
 
     // ─── Detuned pad: 3 sawtooths through a slow-sweeping LPF ────────
+    // Held oscillator refs so the chord-progression scheduler can slide
+    // them to new pitches over time.
     const padFilter = ctx.createBiquadFilter();
     padFilter.type = 'lowpass';
     padFilter.frequency.value = variant === 'boss' ? 360 : 480;
@@ -130,18 +132,21 @@ export class AudioEngine {
     const padGain = ctx.createGain();
     padGain.gain.value = variant === 'boss' ? 0.11 : 0.09;
     padFilter.connect(padGain).connect(bed);
-    // Intervals: root + minor 2nd (creepy) for boss, root + perfect 5th for calm
     const padIntervals = variant === 'boss' ? [1, 2.12, 0.5] : [1, 1.5, 0.5];
     const detunes = [-7, 0, 5];
+    const padOscs: OscillatorNode[] = [];
     padIntervals.forEach((mul, i) => {
       const o = ctx.createOscillator();
       o.type = 'sawtooth';
-      o.frequency.value = rootHz * mul * 4; // move pad to audible range
+      o.frequency.value = rootHz * mul * 4;
       o.detune.value = detunes[i];
       o.connect(padFilter);
       o.start();
       starts.push(o);
+      padOscs.push(o);
     });
+    // Store sub for chord shifts too.
+    const subRoot = sub;
 
     // LFO slowly sweeps the pad filter so the tone breathes.
     const sweepLfo = ctx.createOscillator();
@@ -152,6 +157,34 @@ export class AudioEngine {
     sweepLfo.connect(sweepGain).connect(padFilter.frequency);
     sweepLfo.start();
     starts.push(sweepLfo);
+
+    // ─── Chord shifts: every 40–70s the root slides to a related note ─
+    // Minor-mode related intervals relative to root. Boss leans darker.
+    const chordChoices = variant === 'boss'
+      ? [1, 0.944, 0.89, 1.122]     // tonic, semitone-down, minor-3rd-down, minor-2nd-up
+      : [1, 1.122, 0.944, 0.841];   // tonic, minor-2nd-up, semitone-down, minor-6th-down
+    let chordIdx = 0;
+    let currentChordRatio = 1;
+    const chordTimer = setInterval(() => {
+      if (!this.ctx || !this.settings.enabled) return;
+      chordIdx = (chordIdx + 1 + Math.floor(Math.random() * (chordChoices.length - 1))) % chordChoices.length;
+      const ratio = chordChoices[chordIdx];
+      const now = ctx.currentTime;
+      const glide = 6; // seconds — slow slide between chords
+      subRoot.frequency.cancelScheduledValues(now);
+      subRoot.frequency.setValueAtTime(subRoot.frequency.value, now);
+      subRoot.frequency.linearRampToValueAtTime(rootHz * ratio, now + glide);
+      padOscs.forEach((o, i) => {
+        const target = rootHz * padIntervals[i] * 4 * ratio;
+        o.frequency.cancelScheduledValues(now);
+        o.frequency.setValueAtTime(o.frequency.value, now);
+        o.frequency.linearRampToValueAtTime(target, now + glide);
+      });
+      // Remember current ratio so melody scheduler can pick from a
+      // scale rooted on the CURRENT chord.
+      currentChordRatio = ratio;
+    }, (variant === 'boss' ? 40 : 55) * 1000);
+    intervals.push(chordTimer);
 
     // ─── Cave wind: brown noise through a wandering bandpass ─────────
     const noise = ctx.createBufferSource();
@@ -174,17 +207,57 @@ export class AudioEngine {
     windLfo.start();
     starts.push(noise, windLfo);
 
-    // ─── Sparse random drips / metallic pings ────────────────────────
-    const dripTimer = setInterval(() => {
+    // ─── Environmental texture: varied one-shots picked at random ────
+    // Every couple of seconds, maybe (40%) play one of several different
+    // creepy dungeon sounds so the atmosphere keeps evolving.
+    const envTimer = setInterval(() => {
       if (!this.ctx || !this.settings.enabled) return;
-      // Only fire ~40% of intervals so it feels scattered, not rhythmic.
-      if (Math.random() > 0.4) return;
-      const pitch = variant === 'boss'
-        ? 240 + Math.random() * 180
-        : 900 + Math.random() * 1400;
-      this.drip(pitch, variant === 'boss' ? 0.45 : 0.22, bed);
-    }, 2200);
-    intervals.push(dripTimer);
+      if (Math.random() > 0.45) return;
+      const kinds: Array<() => void> = [
+        () => {
+          const pitch = variant === 'boss'
+            ? 240 + Math.random() * 180
+            : 900 + Math.random() * 1400;
+          this.drip(pitch, variant === 'boss' ? 0.45 : 0.22, bed);
+        },
+        () => this.creak(variant === 'boss' ? 0.9 : 0.7, bed),
+        () => this.whisper(variant === 'boss' ? 1.2 : 0.9, bed),
+        () => this.distantRumble(variant === 'boss' ? 0.9 : 0.7, bed),
+        () => {
+          // high chime, sparse, shimmering. Pitched in a minor scale.
+          const scale = [1, 1.189, 1.335, 1.498, 1.682, 1.782, 2];
+          const mul = scale[Math.floor(Math.random() * scale.length)];
+          const f = rootHz * 8 * mul * currentChordRatio;
+          this.chime(f, 0.9, bed);
+        },
+      ];
+      const pick = kinds[Math.floor(Math.random() * kinds.length)];
+      pick();
+    }, 2100);
+    intervals.push(envTimer);
+
+    // ─── Slow melodic phrases — 3-4 notes from a minor scale ─────────
+    // These are the "a noise every now and then" musical motifs. Plays
+    // every 22–45s, short enough to feel like a haunted-thought, not a
+    // tune.
+    const melodyTimer = setInterval(() => {
+      if (!this.ctx || !this.settings.enabled) return;
+      if (Math.random() > 0.7) return;
+      // Minor scale degrees rooted on the current chord. Stays sparse:
+      // pick 2–4 notes with small steps, not leaping.
+      const minor = [1, 1.122, 1.189, 1.335, 1.498, 1.587, 1.782];
+      let idx = Math.floor(Math.random() * 3) + 1;
+      const noteCount = 2 + Math.floor(Math.random() * 3);
+      let delay = 0;
+      for (let n = 0; n < noteCount; n++) {
+        const mul = minor[Math.max(0, Math.min(minor.length - 1, idx))];
+        const f = rootHz * 8 * mul * currentChordRatio;
+        this.phraseNote(f, 1.3, bed, delay);
+        delay += 0.45 + Math.random() * 0.25;
+        idx += (Math.random() < 0.5 ? -1 : 1);
+      }
+    }, variant === 'boss' ? 28000 : 34000);
+    intervals.push(melodyTimer);
 
     // ─── Boss-only: slow heartbeat ────────────────────────────────────
     if (variant === 'boss') {
@@ -251,6 +324,109 @@ export class AudioEngine {
     osc.connect(bp).connect(gain).connect(dest);
     osc.start();
     osc.stop(ctx.currentTime + dur + 0.05);
+  }
+
+  /** Creaking-wood / stressed-stone sound: short filtered noise swell with
+   *  a wobbling pitch. */
+  private creak(dur: number, dest: AudioNode): void {
+    if (!this.ctx) return;
+    const ctx = this.ctx;
+    const noise = ctx.createBufferSource();
+    noise.buffer = this.getBrownNoiseBuffer(ctx);
+    noise.loop = true;
+    const bp = ctx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.Q.value = 14;
+    const startF = 180 + Math.random() * 180;
+    const endF = startF * (0.6 + Math.random() * 0.3);
+    bp.frequency.setValueAtTime(startF, ctx.currentTime);
+    bp.frequency.linearRampToValueAtTime(endF, ctx.currentTime + dur);
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0, ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(0.28, ctx.currentTime + dur * 0.3);
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + dur);
+    noise.connect(bp).connect(gain).connect(dest);
+    noise.start();
+    noise.stop(ctx.currentTime + dur + 0.05);
+  }
+
+  /** Breathy whisper/air swell — high narrow-band noise, slow envelope. */
+  private whisper(dur: number, dest: AudioNode): void {
+    if (!this.ctx) return;
+    const ctx = this.ctx;
+    const noise = ctx.createBufferSource();
+    noise.buffer = this.getBrownNoiseBuffer(ctx);
+    noise.loop = true;
+    const bp = ctx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.Q.value = 3;
+    bp.frequency.value = 1200 + Math.random() * 1200;
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0, ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(0.18, ctx.currentTime + dur * 0.5);
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + dur);
+    // Panned off-centre so whispers come from "somewhere else".
+    const panner = ctx.createStereoPanner();
+    panner.pan.value = (Math.random() - 0.5) * 1.6;
+    noise.connect(bp).connect(gain).connect(panner).connect(dest);
+    noise.start();
+    noise.stop(ctx.currentTime + dur + 0.05);
+  }
+
+  /** Sub-bass rumble that fades in and out like a distant collapse. */
+  private distantRumble(dur: number, dest: AudioNode): void {
+    if (!this.ctx) return;
+    const ctx = this.ctx;
+    const osc = ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(45 + Math.random() * 20, ctx.currentTime);
+    osc.frequency.linearRampToValueAtTime(28, ctx.currentTime + dur);
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0, ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(0.35, ctx.currentTime + dur * 0.4);
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + dur);
+    osc.connect(gain).connect(dest);
+    osc.start();
+    osc.stop(ctx.currentTime + dur + 0.05);
+  }
+
+  /** Soft sine bell — short shimmering pitched note. */
+  private chime(freq: number, dur: number, dest: AudioNode): void {
+    if (!this.ctx) return;
+    const ctx = this.ctx;
+    const osc = ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.value = freq;
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0, ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(0.09, ctx.currentTime + 0.03);
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + dur);
+    osc.connect(gain).connect(dest);
+    osc.start();
+    osc.stop(ctx.currentTime + dur + 0.05);
+  }
+
+  /** One note of a slow melodic phrase — gentle triangle with long tail. */
+  private phraseNote(freq: number, dur: number, dest: AudioNode, startDelay: number): void {
+    if (!this.ctx) return;
+    const ctx = this.ctx;
+    const t0 = ctx.currentTime + startDelay;
+    const osc = ctx.createOscillator();
+    osc.type = 'triangle';
+    osc.frequency.value = freq;
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = 2200;
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0, t0);
+    gain.gain.linearRampToValueAtTime(0.14, t0 + 0.08);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    // Slight pan so successive notes seem to shift position.
+    const panner = ctx.createStereoPanner();
+    panner.pan.value = (Math.random() - 0.5) * 0.8;
+    osc.connect(filter).connect(gain).connect(panner).connect(dest);
+    osc.start(t0);
+    osc.stop(t0 + dur + 0.05);
   }
 
   /** Low thud used by the boss ambient variant. */
