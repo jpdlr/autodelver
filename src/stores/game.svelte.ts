@@ -5,6 +5,8 @@ import { SandboxHost } from '../sandbox/host';
 import { loadMeta, saveMeta } from '../persistence/meta';
 import { loadScript } from '../persistence/scripts';
 import { DEFAULT_META, type MetaProgression, type DelverClass } from '../engine/types';
+import { hasFirestoreConfig } from '../persistence/firebase';
+import { loadRankings, savePlayerProfile, submitRanking, type RankingEntry } from '../persistence/rankings';
 
 export type Screen = 'home' | 'tutorial' | 'loadout' | 'run' | 'postmortem';
 
@@ -21,6 +23,10 @@ function createGame() {
   let meta = $state<MetaProgression>({ ...DEFAULT_META });
   let speed = $state<number>(1);
   let lastRunSummary = $state<RunSummary | null>(null);
+  let onlineRankings = $state<RankingEntry[]>([]);
+  let rankingStatus = $state<'disabled' | 'loading' | 'ready' | 'error'>(
+    hasFirestoreConfig() ? 'loading' : 'disabled',
+  );
   let editingMidRun = $state<boolean>(false);
   let preEditSpeed = 1;
   let scripts = $state<Record<DelverClass, string>>({
@@ -40,6 +46,25 @@ function createGame() {
 
   let host: SandboxHost | null = null;
   let timer: number | null = null;
+
+  if (typeof window !== 'undefined' && hasFirestoreConfig()) {
+    void refreshRankings();
+  }
+
+  async function refreshRankings(): Promise<void> {
+    if (!hasFirestoreConfig()) {
+      rankingStatus = 'disabled';
+      return;
+    }
+    rankingStatus = 'loading';
+    try {
+      onlineRankings = await loadRankings(10);
+      rankingStatus = 'ready';
+    } catch (err) {
+      console.error('Failed to load rankings:', err);
+      rankingStatus = 'error';
+    }
+  }
 
   async function advance(): Promise<void> {
     if (!world || !host || world.status !== 'running') return;
@@ -74,6 +99,12 @@ function createGame() {
     meta.runHistory = [runRecord, ...meta.runHistory]
       .sort((a, b) => b.depth - a.depth || a.ticks - b.ticks)
       .slice(0, 25);
+    void submitRanking(runRecord)
+      .then(refreshRankings)
+      .catch((err) => {
+        console.error('Failed to submit ranking:', err);
+        rankingStatus = hasFirestoreConfig() ? 'error' : 'disabled';
+      });
     if (depth >= 2 && !meta.unlockedApis.includes('memory')) {
       meta.unlockedApis = [...meta.unlockedApis, 'memory'];
     }
@@ -205,6 +236,12 @@ function createGame() {
     get lastRunSummary() {
       return lastRunSummary;
     },
+    get onlineRankings() {
+      return onlineRankings;
+    },
+    get rankingStatus() {
+      return rankingStatus;
+    },
     get scripts() {
       return scripts;
     },
@@ -215,7 +252,11 @@ function createGame() {
       const clean = name.trim().replace(/\s+/g, ' ').slice(0, 24);
       meta.username = clean;
       saveMeta(meta);
+      void savePlayerProfile(meta.playerId, clean).catch((err) => {
+        console.error('Failed to save player profile:', err);
+      });
     },
+    refreshRankings,
     setScript(cls: DelverClass, script: string): void {
       scripts = { ...scripts, [cls]: script };
     },

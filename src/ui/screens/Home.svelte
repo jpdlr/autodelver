@@ -19,7 +19,9 @@
   const isFirstRun = $derived(game.meta.totalRuns === 0);
   let usernameDraft = $state(game.meta.username);
   let editingUsername = $state(!game.meta.username);
-  const leaderboard = $derived(game.meta.runHistory.slice(0, 5));
+  const leaderboard = $derived(
+    game.onlineRankings.length ? game.onlineRankings.slice(0, 10) : game.meta.runHistory.slice(0, 5),
+  );
 
   function saveUsername(): void {
     game.setUsername(usernameDraft);
@@ -261,8 +263,16 @@
   {/if}
 
   <section class="section leaderboard">
-    <h3 class="sec-head">Local Leaderboard</h3>
-    <p class="sec-sub">Your best runs on this device. Online rankings can build on this shape later.</p>
+    <h3 class="sec-head">Online Rankings</h3>
+    {#if game.rankingStatus === 'disabled'}
+      <p class="sec-sub">Firestore is not configured yet. Showing local fallback scores from this device.</p>
+    {:else if game.rankingStatus === 'loading'}
+      <p class="sec-sub">Loading Firestore rankings...</p>
+    {:else if game.rankingStatus === 'error'}
+      <p class="sec-sub">Could not reach Firestore rankings. Showing the latest available local scores.</p>
+    {:else}
+      <p class="sec-sub">Global Firestore leaderboard, ranked by deepest depth with faster runs as the tie-breaker.</p>
+    {/if}
 
     <div class="leaderboard-card card">
       {#if leaderboard.length}

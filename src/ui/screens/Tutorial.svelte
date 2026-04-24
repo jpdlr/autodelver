@@ -5,6 +5,7 @@
   import { SandboxHost } from '../../sandbox/host';
   import MonacoEditor from '../MonacoEditor.svelte';
   import GridCanvas from '../GridCanvas.svelte';
+  import ApiReference from '../ApiReference.svelte';
   import { LESSONS, type Lesson, type LessonCheck } from '../tutorial/lessons';
   import { onDestroy } from 'svelte';
 
@@ -20,6 +21,7 @@
   let status = $state<LessonCheck>({ status: 'running' });
   let running = $state(false);
   let lastError = $state<string | null>(null);
+  let refOpen = $state(false);
   let tickRate = 200;
 
   const classNames: Record<DelverClass, string> = {
@@ -190,10 +192,22 @@
           <h2>{lesson.title}</h2>
           <p class="subtitle">{lesson.subtitle}</p>
         </div>
-        <div class="pips" role="progressbar" aria-valuemin="0" aria-valuemax={LESSONS.length} aria-valuenow={activeIdx + 1}>
-          {#each LESSONS as _, i}
-            <span class="pip" class:done={i < activeIdx} class:active={i === activeIdx}></span>
-          {/each}
+        <div class="brief-right">
+          <button
+            type="button"
+            class="ref-btn"
+            onclick={() => (refOpen = true)}
+            title="Open the quick reference (ctx fields + actions)"
+            aria-label="Open quick reference"
+          >
+            <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><path d="M5 6a3 3 0 1 1 4 2.8V10M8 13v.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/></svg>
+            <span>Quick ref</span>
+          </button>
+          <div class="pips" role="progressbar" aria-valuemin="0" aria-valuemax={LESSONS.length} aria-valuenow={activeIdx + 1}>
+            {#each LESSONS as _, i}
+              <span class="pip" class:done={i < activeIdx} class:active={i === activeIdx}></span>
+            {/each}
+          </div>
         </div>
       </div>
       <div class="briefing">
@@ -277,6 +291,39 @@
       </div>
     </div>
   </div>
+
+  {#if refOpen}
+    <div class="ref-overlay" role="dialog" aria-modal="true" aria-label="Quick reference">
+      <div
+        class="ref-backdrop"
+        onclick={() => (refOpen = false)}
+        onkeydown={(e) => { if (e.key === 'Escape') refOpen = false; }}
+        role="button"
+        tabindex="-1"
+        aria-hidden="true"
+      ></div>
+      <aside class="ref-drawer">
+        <header class="ref-head">
+          <div>
+            <p class="eyebrow">Quick reference</p>
+            <h3>ctx fields &amp; actions</h3>
+          </div>
+          <button
+            type="button"
+            class="ref-close"
+            onclick={() => (refOpen = false)}
+            title="Close"
+            aria-label="Close quick reference"
+          >
+            <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          </button>
+        </header>
+        <div class="ref-body">
+          <ApiReference />
+        </div>
+      </aside>
+    </div>
+  {/if}
 </section>
 
 <style>
@@ -410,6 +457,29 @@
     margin: 2px 0 0;
     color: var(--color-text-muted);
     font-size: var(--fs-sm);
+  }
+  .brief-right {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+    flex-shrink: 0;
+  }
+  .ref-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: var(--color-surface-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    color: var(--color-text-muted);
+    font-size: var(--fs-xs);
+    font-family: var(--font-mono);
+    letter-spacing: 0.04em;
+  }
+  .ref-btn:hover {
+    color: var(--color-accent);
+    border-color: var(--color-accent);
   }
   .pips {
     display: flex;
@@ -591,5 +661,71 @@
     .lesson-list { flex-direction: row; }
     .lesson-item { width: auto; }
     .workspace { grid-template-columns: 1fr; }
+  }
+
+  /* ─── Quick-ref drawer ─────────────────────── */
+  .ref-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 80;
+    display: flex;
+    justify-content: flex-end;
+  }
+  .ref-backdrop {
+    position: absolute;
+    inset: 0;
+    background: var(--color-overlay, rgba(0, 0, 0, 0.4));
+    backdrop-filter: blur(2px);
+    border: 0;
+    cursor: pointer;
+  }
+  .ref-drawer {
+    position: relative;
+    width: min(440px, 100%);
+    height: 100%;
+    background: var(--color-surface);
+    border-left: 1px solid var(--color-border);
+    box-shadow: var(--elev-3);
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    animation: slide-in var(--dur-base) var(--ease-out);
+  }
+  @keyframes slide-in {
+    from { transform: translateX(16px); opacity: 0.8; }
+    to   { transform: translateX(0); opacity: 1; }
+  }
+  .ref-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--sp-3);
+    padding: var(--sp-3) var(--sp-4);
+    border-bottom: 1px solid var(--color-border);
+    flex-shrink: 0;
+  }
+  .ref-head h3 {
+    margin: 2px 0 0;
+    font-size: var(--fs-md);
+    color: var(--color-text);
+  }
+  .ref-close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    background: var(--color-surface-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    color: var(--color-text-muted);
+  }
+  .ref-close:hover { color: var(--color-text); border-color: var(--color-border-strong); }
+  .ref-body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: var(--sp-3) var(--sp-4);
   }
 </style>

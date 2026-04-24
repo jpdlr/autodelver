@@ -1,0 +1,52 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /rankings/{runId} {
+      allow read: if true;
+      allow create: if isValidRanking();
+      allow update, delete: if false;
+    }
+
+    match /players/{playerId} {
+      allow read: if true;
+      allow create, update: if request.resource.data.keys().hasOnly(['username', 'updatedAt'])
+        && request.resource.data.username is string
+        && request.resource.data.username.size() > 0
+        && request.resource.data.username.size() <= 24;
+      allow delete: if false;
+    }
+
+    function isValidRanking() {
+      return request.resource.data.keys().hasOnly([
+          'id',
+          'playerId',
+          'username',
+          'depth',
+          'ticks',
+          'insightEarned',
+          'causeOfDeath',
+          'finishedAt',
+          'score',
+          'submittedAt'
+        ])
+        && request.resource.data.id is string
+        && request.resource.data.playerId is string
+        && request.resource.data.username is string
+        && request.resource.data.username.size() > 0
+        && request.resource.data.username.size() <= 24
+        && request.resource.data.depth is int
+        && request.resource.data.depth >= 1
+        && request.resource.data.depth <= 100000
+        && request.resource.data.ticks is int
+        && request.resource.data.ticks >= 0
+        && request.resource.data.insightEarned is int
+        && request.resource.data.insightEarned >= 0
+        && request.resource.data.causeOfDeath is string
+        && request.resource.data.causeOfDeath.size() <= 240
+        && request.resource.data.finishedAt is string
+        && request.resource.data.score is int
+        && request.resource.data.score == request.resource.data.depth * 1000000 - request.resource.data.ticks;
+    }
+  }
+}
