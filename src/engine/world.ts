@@ -31,8 +31,11 @@ export function spawnDelver(partial: Partial<Delver> & Pick<Delver, 'class' | 'n
     maxMp: 10,
     attack: 8,
     armor: 2,
+    range: 1,
     script: partial.script,
     memory: {},
+    cooldowns: { heal: 0 },
+    reviveUsedDepth: null,
     downedFor: 0,
     color: 'var(--color-entity-delver)',
   };

@@ -14,6 +14,8 @@ interface EntitySnapshot {
   pos: Pos;
   hp: number;
   maxHp: number;
+  class?: string;
+  range?: number;
 }
 
 interface Self extends EntitySnapshot {
@@ -22,6 +24,10 @@ interface Self extends EntitySnapshot {
   maxMp: number;
   class: string;
   name: string;
+  attack: number;
+  range: number;
+  cooldowns: { heal: number };
+  reviveReady: boolean;
 }
 
 /** Per-tick snapshot of the world, visible to your delver. */
@@ -50,7 +56,9 @@ interface Context {
 type Action =
   | { type: 'wait' }
   | { type: 'move'; target: Pos }
-  | { type: 'attack'; target: string }  // enemy id
+  | { type: 'attack'; target: string }  // enemy id, uses ctx.self.range
+  | { type: 'heal'; target: string }    // cleric: 2 MP, 4 tick CD, restores 5 HP
+  | { type: 'revive'; target: string }  // cleric: 10 MP, once per depth, restores 5 HP
   | { type: 'retreat' }
   | { type: 'descend' };
 

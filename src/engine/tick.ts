@@ -86,9 +86,47 @@ function applyDelverAction(world: World, d: Delver, action: Action, rng: Rng): v
     case 'attack': {
       const target = world.enemies.find((e) => e.id === action.target && e.hp > 0);
       if (!target) return;
-      if (distCheb(d.pos, target.pos) > 1) return;
+      if (distCheb(d.pos, target.pos) > d.range) return;
       const res = resolveAttack(world.tick, d, target, rng);
       world.events.push(...res.events);
+      return;
+    }
+    case 'heal': {
+      if (d.class !== 'cleric') return;
+      if (d.mp < 2 || d.cooldowns.heal > 0) return;
+      const target = world.delvers.find((ally) => ally.id === action.target && ally.hp > 0);
+      if (!target || distCheb(d.pos, target.pos) > d.range || target.hp >= target.maxHp) return;
+      d.mp -= 2;
+      d.cooldowns.heal = 4;
+      const amount = Math.min(5, target.maxHp - target.hp);
+      target.hp += amount;
+      world.events.push({
+        tick: world.tick,
+        kind: 'heal',
+        actorId: d.id,
+        targetId: target.id,
+        message: `${d.name} heals ${target.name} for ${amount} HP`,
+        data: { amount, mpCost: 2, cooldown: 4 },
+      });
+      return;
+    }
+    case 'revive': {
+      if (d.class !== 'cleric') return;
+      if (d.mp < 10 || d.reviveUsedDepth === world.depth) return;
+      const target = world.delvers.find((ally) => ally.id === action.target && ally.hp === 0);
+      if (!target || target.id === d.id || distCheb(d.pos, target.pos) > d.range) return;
+      d.mp -= 10;
+      d.reviveUsedDepth = world.depth;
+      target.hp = Math.min(5, target.maxHp);
+      target.downedFor = 0;
+      world.events.push({
+        tick: world.tick,
+        kind: 'heal',
+        actorId: d.id,
+        targetId: target.id,
+        message: `${d.name} revives ${target.name} with ${target.hp} HP`,
+        data: { amount: target.hp, mpCost: 10, oncePerDepth: true },
+      });
       return;
     }
     case 'retreat': {
@@ -152,6 +190,10 @@ function postTick(world: World): void {
     if (e.hp === 0 && !world.events.some((ev) => ev.kind === 'death' && ev.actorId === e.id && ev.tick === world.tick - 0)) {
       // already logged in combat
     }
+  }
+
+  for (const d of world.delvers) {
+    if (d.cooldowns.heal > 0) d.cooldowns.heal--;
   }
 
   // Death logging for delvers

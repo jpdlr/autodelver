@@ -11,7 +11,7 @@
 
   let canvas: HTMLCanvasElement | undefined = $state();
   let wrapper: HTMLDivElement | undefined = $state();
-  const TILE_SIZE = 24;
+  let tileSize = $state(24);
 
   // Preload generated sprite images and redraw when they finish decoding.
   const spriteImgs: Partial<Record<SpriteId, HTMLImageElement>> = {};
@@ -77,8 +77,8 @@
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    canvas.width = world.grid.width * TILE_SIZE;
-    canvas.height = world.grid.height * TILE_SIZE;
+    canvas.width = world.grid.width * tileSize;
+    canvas.height = world.grid.height * tileSize;
 
     const floorA = cssVar('--color-tile-floor') || '#d9d5c9';
     const wallDark = cssVar('--color-tile-wall') || '#4a453d';
@@ -98,40 +98,40 @@
     for (let y = 0; y < world.grid.height; y++) {
       for (let x = 0; x < world.grid.width; x++) {
         const t = world.grid.tiles[y * world.grid.width + x];
-        const px = x * TILE_SIZE;
-        const py = y * TILE_SIZE;
+        const px = x * tileSize;
+        const py = y * tileSize;
         switch (t) {
           case TILE.wall: {
             ctx.fillStyle = wallDark;
-            ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+            ctx.fillRect(px, py, tileSize, tileSize);
             break;
           }
           case TILE.floor: {
             ctx.fillStyle = (x + y) % 2 === 0 ? floorA : floorB;
-            ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+            ctx.fillRect(px, py, tileSize, tileSize);
             ctx.strokeStyle = dark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.06)';
             ctx.lineWidth = 1;
-            ctx.strokeRect(px + 0.5, py + 0.5, TILE_SIZE - 1, TILE_SIZE - 1);
+            ctx.strokeRect(px + 0.5, py + 0.5, tileSize - 1, tileSize - 1);
             break;
           }
           case TILE.door: {
             ctx.fillStyle = floorA;
-            ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+            ctx.fillRect(px, py, tileSize, tileSize);
             ctx.fillStyle = doorC;
-            ctx.fillRect(px + 4, py + 3, TILE_SIZE - 8, TILE_SIZE - 6);
+            ctx.fillRect(px + 4, py + 3, tileSize - 8, tileSize - 6);
             ctx.strokeStyle = '#343a42';
-            ctx.strokeRect(px + 4.5, py + 3.5, TILE_SIZE - 9, TILE_SIZE - 7);
+            ctx.strokeRect(px + 4.5, py + 3.5, tileSize - 9, tileSize - 7);
             break;
           }
           case TILE['stairs-down']: {
             ctx.fillStyle = '#5e496c';
-            ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+            ctx.fillRect(px, py, tileSize, tileSize);
             ctx.fillStyle = stairsC;
             for (let i = 0; i < 4; i++) {
-              ctx.fillRect(px + 3 + i * 2.5, py + 5 + i * 3.5, TILE_SIZE - 6 - i * 5, 2);
+              ctx.fillRect(px + 3 + i * 2.5, py + 5 + i * 3.5, tileSize - 6 - i * 5, 2);
             }
             ctx.strokeStyle = 'rgba(245, 238, 220, 0.6)';
-            ctx.strokeRect(px + 0.5, py + 0.5, TILE_SIZE - 1, TILE_SIZE - 1);
+            ctx.strokeRect(px + 0.5, py + 0.5, tileSize - 1, tileSize - 1);
             break;
           }
         }
@@ -141,45 +141,45 @@
     // enemies — generated sprite per archetype; HP bar overlaid
     for (const e of world.enemies) {
       if (e.hp === 0) continue;
-      const px = e.pos.x * TILE_SIZE;
-      const py = e.pos.y * TILE_SIZE;
+      const px = e.pos.x * tileSize;
+      const py = e.pos.y * tileSize;
       ctx.fillStyle = 'rgba(0,0,0,0.22)';
       ctx.beginPath();
-      ctx.ellipse(px + TILE_SIZE / 2, py + TILE_SIZE - 3, TILE_SIZE * 0.38, 2.5, 0, 0, Math.PI * 2);
+      ctx.ellipse(px + tileSize / 2, py + tileSize - 3, tileSize * 0.38, 2.5, 0, 0, Math.PI * 2);
       ctx.fill();
       const spriteId = archetypeSprite[e.archetype] ?? 'slime';
       const img = loadSprite(spriteId);
       if (img) {
-        ctx.drawImage(img, px, py, TILE_SIZE, TILE_SIZE);
+        ctx.drawImage(img, px, py, tileSize, tileSize);
       } else {
         ctx.fillStyle = '#9e3d43';
         ctx.beginPath();
-        ctx.arc(px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE * 0.32, 0, Math.PI * 2);
+        ctx.arc(px + tileSize / 2, py + tileSize / 2, tileSize * 0.32, 0, Math.PI * 2);
         ctx.fill();
       }
       // hp bar
       const hpFrac = e.hp / e.maxHp;
       ctx.fillStyle = 'rgba(0,0,0,0.5)';
-      ctx.fillRect(px + 3, py + 1, TILE_SIZE - 6, 2.5);
+      ctx.fillRect(px + 3, py + 1, tileSize - 6, 2.5);
       ctx.fillStyle = '#9e3d43';
-      ctx.fillRect(px + 3, py + 1, (TILE_SIZE - 6) * hpFrac, 2.5);
+      ctx.fillRect(px + 3, py + 1, (tileSize - 6) * hpFrac, 2.5);
     }
 
     // delvers — generated hero sprite per class; dimmed if downed
     for (const d of world.delvers) {
-      const px = d.pos.x * TILE_SIZE;
-      const py = d.pos.y * TILE_SIZE;
+      const px = d.pos.x * tileSize;
+      const py = d.pos.y * tileSize;
       const alive = d.hp > 0;
       ctx.fillStyle = 'rgba(0,0,0,0.22)';
       ctx.beginPath();
-      ctx.ellipse(px + TILE_SIZE / 2, py + TILE_SIZE - 3, TILE_SIZE * 0.38, 2.5, 0, 0, Math.PI * 2);
+      ctx.ellipse(px + tileSize / 2, py + tileSize - 3, tileSize * 0.38, 2.5, 0, 0, Math.PI * 2);
       ctx.fill();
       const spriteId = classSprite[d.class] ?? 'grimm-warrior';
       const img = loadSprite(spriteId);
       ctx.save();
       if (!alive) ctx.globalAlpha = 0.35;
       if (img) {
-        ctx.drawImage(img, px, py, TILE_SIZE, TILE_SIZE);
+        ctx.drawImage(img, px, py, tileSize, tileSize);
       } else {
         const fallback: Record<string, string> = {
           warrior: '#2f4858',
@@ -187,19 +187,41 @@
           cleric: '#6b3a6a',
         };
         ctx.fillStyle = fallback[d.class] ?? '#2f4858';
-        ctx.fillRect(px + 4, py + 4, TILE_SIZE - 8, TILE_SIZE - 8);
+        ctx.fillRect(px + 4, py + 4, tileSize - 8, tileSize - 8);
       }
       ctx.restore();
       // hp bar
       if (alive) {
         const hpFrac = d.hp / d.maxHp;
         ctx.fillStyle = 'rgba(0,0,0,0.5)';
-        ctx.fillRect(px + 3, py + 1, TILE_SIZE - 6, 2.5);
+        ctx.fillRect(px + 3, py + 1, tileSize - 6, 2.5);
         ctx.fillStyle = '#5f8f73';
-        ctx.fillRect(px + 3, py + 1, (TILE_SIZE - 6) * hpFrac, 2.5);
+        ctx.fillRect(px + 3, py + 1, (tileSize - 6) * hpFrac, 2.5);
       }
     }
   }
+
+  function fit(): void {
+    if (!wrapper || !world) return;
+    const padding = 16; // matches wrapper padding so the dungeon breathes
+    const availW = wrapper.clientWidth - padding * 2;
+    const availH = wrapper.clientHeight - padding * 2;
+    if (availW <= 0 || availH <= 0) return;
+    const byW = Math.floor(availW / world.grid.width);
+    const byH = Math.floor(availH / world.grid.height);
+    const next = Math.max(6, Math.min(byW, byH));
+    if (next !== tileSize) {
+      tileSize = next;
+    }
+    draw();
+  }
+
+  $effect(() => {
+    // refit when the world (and therefore grid dimensions) changes
+    void world?.grid.width;
+    void world?.grid.height;
+    fit();
+  });
 
   $effect(() => {
     void world?.tick;
@@ -207,8 +229,8 @@
   });
 
   onMount(() => {
-    draw();
-    const obs = new ResizeObserver(() => draw());
+    fit();
+    const obs = new ResizeObserver(() => fit());
     if (wrapper) obs.observe(wrapper);
     return () => obs.disconnect();
   });
@@ -222,11 +244,11 @@
   .grid-canvas-wrapper {
     width: 100%;
     height: 100%;
-    overflow: auto;
+    overflow: hidden;
     display: flex;
     justify-content: center;
-    align-items: flex-start;
-    padding: var(--sp-4);
+    align-items: center;
+    padding: var(--sp-2);
     background: var(--color-surface-2);
     border-radius: var(--radius-md);
   }
@@ -234,5 +256,7 @@
     display: block;
     box-shadow: var(--elev-1);
     border-radius: var(--radius-sm);
+    max-width: 100%;
+    max-height: 100%;
   }
 </style>

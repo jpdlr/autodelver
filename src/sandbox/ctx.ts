@@ -6,6 +6,8 @@ export interface CtxEntitySnapshot {
   pos: Pos;
   hp: number;
   maxHp: number;
+  class?: string;
+  range?: number;
 }
 
 export interface CtxSelf extends CtxEntitySnapshot {
@@ -14,6 +16,12 @@ export interface CtxSelf extends CtxEntitySnapshot {
   maxMp: number;
   class: string;
   name: string;
+  attack: number;
+  range: number;
+  cooldowns: {
+    heal: number;
+  };
+  reviveReady: boolean;
 }
 
 export interface CtxSnapshot {
@@ -53,6 +61,10 @@ export function buildSnapshot(
       maxMp: self.maxMp,
       class: self.class,
       name: self.name,
+      attack: self.attack,
+      range: self.range,
+      cooldowns: { heal: self.cooldowns.heal },
+      reviveReady: self.reviveUsedDepth !== depth,
     },
     party: party
       .filter((d) => d.id !== self.id)
@@ -62,6 +74,8 @@ export function buildSnapshot(
         pos: { x: d.pos.x, y: d.pos.y },
         hp: d.hp,
         maxHp: d.maxHp,
+        class: d.class,
+        range: d.range,
       })),
     enemies: enemies
       .filter((e) => e.hp > 0)

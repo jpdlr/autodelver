@@ -161,6 +161,16 @@ function validateAction(raw: unknown): Action | null {
         return { type: 'attack', target: a.target };
       }
       return null;
+    case 'heal':
+      if (typeof a.target === 'string') {
+        return { type: 'heal', target: a.target };
+      }
+      return null;
+    case 'revive':
+      if (typeof a.target === 'string') {
+        return { type: 'revive', target: a.target };
+      }
+      return null;
     default:
       return null;
   }

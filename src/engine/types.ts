@@ -23,8 +23,13 @@ export interface Delver extends BaseEntity {
   maxMp: number;
   attack: number;
   armor: number;
+  range: number;
   script: string;
   memory: Record<string, unknown>;
+  cooldowns: {
+    heal: number;
+  };
+  reviveUsedDepth: number | null;
   downedFor: number;
   color: string;
 }
@@ -48,6 +53,8 @@ export interface Grid {
 export type Action =
   | { type: 'move'; target: Pos }
   | { type: 'attack'; target: EntityId }
+  | { type: 'heal'; target: EntityId }
+  | { type: 'revive'; target: EntityId }
   | { type: 'wait' }
   | { type: 'retreat' }
   | { type: 'descend' };

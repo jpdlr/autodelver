@@ -43,6 +43,29 @@
       </div>
     {/if}
 
+    {#if game.world}
+      <div class="diagnostics">
+        <div class="diag-label">party state</div>
+        <div class="party-state">
+          {#each game.world.delvers as d}
+            <div class="party-row" class:downed={d.hp === 0}>
+              <span>{d.name}</span>
+              <code>{d.hp}/{d.maxHp} HP · {d.mp}/{d.maxMp} MP</code>
+            </div>
+          {/each}
+        </div>
+        <div class="diag-label">last events</div>
+        <div class="event-list">
+          {#each game.recentLog(8) as ev}
+            <div class="event-row">
+              <code>t{ev.tick}</code>
+              <span>{ev.message}</span>
+            </div>
+          {/each}
+        </div>
+      </div>
+    {/if}
+
     <div class="actions">
       <button type="button" onclick={home}>Home</button>
       <button type="button" onclick={edit}>Edit scripts</button>
@@ -127,6 +150,47 @@
     font-size: var(--fs-xl);
     font-weight: 600;
     color: var(--color-text);
+  }
+  .diagnostics {
+    text-align: left;
+    background: var(--color-surface-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: var(--sp-3);
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-2);
+  }
+  .diag-label {
+    color: var(--color-text-subtle);
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+  .party-state,
+  .event-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-1);
+  }
+  .party-row,
+  .event-row {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--sp-3);
+    color: var(--color-text-muted);
+    font-size: var(--fs-xs);
+  }
+  .party-row span,
+  .event-row span {
+    color: var(--color-text);
+  }
+  .party-row.downed span {
+    color: var(--color-danger);
+  }
+  .event-row {
+    justify-content: flex-start;
   }
   .actions {
     display: flex;

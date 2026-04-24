@@ -21,12 +21,15 @@
     blurb: string;
     hp: number;
     atk: number;
+    range: number;
+    mp: number;
+    abilities?: string;
     sprite: SpriteId;
   }
   const party: Classmeta[] = [
-    { cls: 'warrior', name: 'Grimm', role: 'Tank', blurb: 'Front-line. High armour. Takes the hits.', hp: 45, atk: 9, sprite: 'grimm-warrior' },
-    { cls: 'ranger', name: 'Vex', role: 'DPS', blurb: 'Fragile. Deadly at the edges. Needs a tank.', hp: 32, atk: 7, sprite: 'vex-ranger' },
-    { cls: 'cleric', name: 'Mira', role: 'Support', blurb: 'Middle of the pack. Cautious. Keeps the party alive.', hp: 36, atk: 5, sprite: 'mira-cleric' },
+    { cls: 'warrior', name: 'Grimm', role: 'Tank', blurb: 'Front-line. High armour. Takes the hits.', hp: 45, atk: 7, range: 1, mp: 0, sprite: 'grimm-warrior' },
+    { cls: 'ranger', name: 'Vex', role: 'DPS', blurb: 'Fragile. Deadly from three tiles away. Needs a tank.', hp: 30, atk: 8, range: 3, mp: 0, sprite: 'vex-ranger' },
+    { cls: 'cleric', name: 'Mira', role: 'Support', blurb: 'Short-range support. Heals wounds and can revive once per depth.', hp: 30, atk: 5, range: 2, mp: 10, abilities: 'Heal 5 HP · Revive 5 HP', sprite: 'mira-cleric' },
   ];
 </script>
 
@@ -96,6 +99,14 @@
             <span>HP {p.hp}</span>
             <span class="sep">·</span>
             <span>ATK {p.atk}</span>
+            <span class="sep">·</span>
+            <span>RNG {p.range}</span>
+            <span class="sep">·</span>
+            <span>MP {p.mp}</span>
+            {#if p.abilities}
+              <span class="sep">·</span>
+              <span>{p.abilities}</span>
+            {/if}
           </div>
         </div>
       {/each}
@@ -436,6 +447,7 @@
   }
   .role-stats {
     display: flex;
+    flex-wrap: wrap;
     gap: var(--sp-2);
     font-family: var(--font-mono);
     font-size: var(--fs-xs);

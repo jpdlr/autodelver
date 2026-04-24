@@ -15,6 +15,9 @@
     { name: 'ctx.self.pos', desc: 'Your x/y tile.', example: 'ctx.self.pos.x' },
     { name: 'ctx.self.hp / maxHp', desc: 'Current / max health.' },
     { name: 'ctx.self.mp / maxMp', desc: 'Current / max magic.' },
+    { name: 'ctx.self.attack / range', desc: 'Damage stat and maximum attack tile range.' },
+    { name: 'ctx.self.cooldowns.heal', desc: 'Ticks until cleric heal is ready.' },
+    { name: 'ctx.self.reviveReady', desc: 'Whether cleric revive is unused this depth.' },
     { name: 'ctx.self.class', desc: `"warrior" | "ranger" | "cleric"` },
     { name: 'ctx.self.name', desc: `"Grimm" | "Vex" | "Mira"` },
     { name: 'ctx.enemies', desc: 'Living enemies: id, pos, hp.', example: 'ctx.enemies.length' },
@@ -35,8 +38,18 @@
     },
     {
       name: "{ type: 'attack', target: id }",
-      desc: 'Attack an adjacent enemy by id.',
+      desc: 'Attack an enemy by id within your class range.',
       example: `return { type: 'attack', target: enemy.id };`,
+    },
+    {
+      name: "{ type: 'heal', target: id }",
+      desc: 'Cleric only: costs 2 MP, 4-tick cooldown, restores 5 HP within range 2.',
+      example: `return { type: 'heal', target: ally.id };`,
+    },
+    {
+      name: "{ type: 'revive', target: id }",
+      desc: 'Cleric only: costs 10 MP, once per depth, revives a downed ally at 5 HP.',
+      example: `return { type: 'revive', target: ally.id };`,
     },
     {
       name: "{ type: 'retreat' }",
@@ -64,9 +77,9 @@ for (const e of ctx.enemies) {
 }`,
     },
     {
-      name: 'Adjacent check',
-      desc: 'Am I next to this enemy?',
-      example: `if (nearest && best === 1) {
+      name: 'Range check',
+      desc: 'Can I hit this enemy?',
+      example: `if (nearest && best <= ctx.self.range) {
   return { type:'attack', target: nearest.id };
 }`,
     },
