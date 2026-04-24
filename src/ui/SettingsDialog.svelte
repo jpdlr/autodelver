@@ -30,11 +30,14 @@
 
       <label class="row toggle">
         <span class="lbl">Sound enabled</span>
-        <input
-          type="checkbox"
-          checked={audio.settings.enabled}
-          onchange={(e) => audio.setEnabled((e.currentTarget as HTMLInputElement).checked)}
-        />
+        <span class="switch" class:on={audio.settings.enabled}>
+          <input
+            type="checkbox"
+            checked={audio.settings.enabled}
+            onchange={(e) => audio.setEnabled((e.currentTarget as HTMLInputElement).checked)}
+          />
+          <span class="knob" aria-hidden="true"></span>
+        </span>
       </label>
 
       <label class="row slider" class:disabled={!audio.settings.enabled}>
@@ -152,6 +155,48 @@
   .row.disabled { opacity: 0.55; }
   .row .lbl { color: var(--color-text); font-size: var(--fs-sm); }
   .row input[type="range"] { width: 100%; accent-color: var(--color-accent); }
+
+  .switch {
+    position: relative;
+    display: inline-flex;
+    width: 38px;
+    height: 22px;
+    border-radius: 999px;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    cursor: pointer;
+    transition: background var(--dur-base) var(--ease-out),
+                border-color var(--dur-base) var(--ease-out);
+  }
+  .switch input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    margin: 0;
+    cursor: pointer;
+  }
+  .switch .knob {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 16px;
+    height: 16px;
+    background: var(--color-text-subtle);
+    border-radius: 50%;
+    transition: transform var(--dur-base) var(--ease-out),
+                background var(--dur-base) var(--ease-out);
+  }
+  .switch.on {
+    background: color-mix(in srgb, var(--color-accent) 70%, transparent);
+    border-color: var(--color-accent);
+  }
+  .switch.on .knob {
+    background: var(--color-text-inverse, #fff);
+    transform: translateX(16px);
+  }
+  .switch:focus-within {
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-accent) 35%, transparent);
+  }
   .row .pct {
     font-family: var(--font-mono);
     font-size: var(--fs-xs);
