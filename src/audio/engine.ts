@@ -122,23 +122,25 @@ export class AudioEngine {
     sub.start();
     starts.push(sub);
 
-    // ─── Flowy pad: soft triangles (not saws) through a very dark LPF
-    // so the foundation is warm rather than buzzy. Held oscillator refs
-    // let the chord-progression scheduler slide them slowly.
+    // ─── Flowy pad: soft triangles in a low register so the whole bed
+    // sits in the low-mids. Held oscillator refs let the chord scheduler
+    // slide them slowly.
     const padFilter = ctx.createBiquadFilter();
     padFilter.type = 'lowpass';
-    padFilter.frequency.value = variant === 'boss' ? 260 : 340;
+    padFilter.frequency.value = variant === 'boss' ? 200 : 260;
     padFilter.Q.value = 1.1;
     const padGain = ctx.createGain();
-    padGain.gain.value = variant === 'boss' ? 0.14 : 0.12;
+    padGain.gain.value = variant === 'boss' ? 0.18 : 0.15;
     padFilter.connect(padGain).connect(bed);
-    const padIntervals = variant === 'boss' ? [1, 1.5, 0.5] : [1, 1.5, 0.5, 2];
-    const detunes = [-4, 0, 3, -2];
+    // Pad lives one octave above the sub drone (was two). Calm floors
+    // get a 5th; boss gets root + 5th + low octave for extra weight.
+    const padIntervals = variant === 'boss' ? [1, 1.5, 0.5] : [1, 1.5, 0.5];
+    const detunes = [-4, 0, 3];
     const padOscs: OscillatorNode[] = [];
     padIntervals.forEach((mul, i) => {
       const o = ctx.createOscillator();
       o.type = 'triangle';
-      o.frequency.value = rootHz * mul * 4;
+      o.frequency.value = rootHz * mul * 2;
       o.detune.value = detunes[i];
       o.connect(padFilter);
       o.start();
@@ -176,7 +178,7 @@ export class AudioEngine {
       subRoot.frequency.setValueAtTime(subRoot.frequency.value, now);
       subRoot.frequency.linearRampToValueAtTime(rootHz * ratio, now + glide);
       padOscs.forEach((o, i) => {
-        const target = rootHz * padIntervals[i] * 4 * ratio;
+        const target = rootHz * padIntervals[i] * 2 * ratio;
         o.frequency.cancelScheduledValues(now);
         o.frequency.setValueAtTime(o.frequency.value, now);
         o.frequency.linearRampToValueAtTime(target, now + glide);
@@ -193,7 +195,7 @@ export class AudioEngine {
     noise.loop = true;
     const windBand = ctx.createBiquadFilter();
     windBand.type = 'bandpass';
-    windBand.frequency.value = variant === 'boss' ? 280 : 420;
+    windBand.frequency.value = variant === 'boss' ? 180 : 280;
     windBand.Q.value = 0.8;
     const windGain = ctx.createGain();
     windGain.gain.value = variant === 'boss' ? 0.18 : 0.13;
@@ -218,9 +220,9 @@ export class AudioEngine {
       const kinds: Array<() => void> = [
         () => {
           const pitch = variant === 'boss'
-            ? 240 + Math.random() * 180
-            : 900 + Math.random() * 1400;
-          this.drip(pitch, variant === 'boss' ? 0.45 : 0.22, bed);
+            ? 140 + Math.random() * 120
+            : 320 + Math.random() * 440;
+          this.drip(pitch, variant === 'boss' ? 0.5 : 0.3, bed);
         },
         () => this.creak(variant === 'boss' ? 0.9 : 0.7, bed),
         () => this.whisper(variant === 'boss' ? 1.2 : 0.9, bed),
@@ -229,8 +231,8 @@ export class AudioEngine {
           // high chime, sparse, shimmering. Pitched in a minor scale.
           const scale = [1, 1.189, 1.335, 1.498, 1.682, 1.782, 2];
           const mul = scale[Math.floor(Math.random() * scale.length)];
-          const f = rootHz * 8 * mul * currentChordRatio;
-          this.chime(f, 0.9, bed);
+          const f = rootHz * 4 * mul * currentChordRatio;
+          this.chime(f, 1.2, bed);
         },
       ];
       const pick = kinds[Math.floor(Math.random() * kinds.length)];
@@ -253,7 +255,7 @@ export class AudioEngine {
       let delay = 0;
       for (let n = 0; n < noteCount; n++) {
         const mul = minor[Math.max(0, Math.min(minor.length - 1, idx))];
-        const f = rootHz * 8 * mul * currentChordRatio;
+        const f = rootHz * 4 * mul * currentChordRatio;
         this.phraseNote(f, 2.2, bed, delay);
         delay += 0.9 + Math.random() * 0.5;
         idx += (Math.random() < 0.5 ? -1 : 1);
@@ -365,7 +367,7 @@ export class AudioEngine {
     const bp = ctx.createBiquadFilter();
     bp.type = 'bandpass';
     bp.Q.value = 3;
-    bp.frequency.value = 1200 + Math.random() * 1200;
+    bp.frequency.value = 500 + Math.random() * 600;
     const gain = ctx.createGain();
     gain.gain.setValueAtTime(0, ctx.currentTime);
     gain.gain.linearRampToValueAtTime(0.18, ctx.currentTime + dur * 0.5);
