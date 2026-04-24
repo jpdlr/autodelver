@@ -300,10 +300,6 @@
     </div>
   </section>
 
-  <footer class="site-foot">
-    <div>AutoDelver · Svelte 5 + Vite + TypeScript</div>
-    <div class="foot-mono">roguelite · idler · programmable</div>
-  </footer>
   </div>
 </section>
 
@@ -835,22 +831,6 @@
     text-align: center;
   }
 
-  /* ─── FOOTER ──────────────────────────────── */
-  .site-foot {
-    max-width: 1080px;
-    margin: var(--sp-6) auto 0;
-    padding-top: var(--sp-5);
-    border-top: 1px solid var(--color-border);
-    display: flex;
-    justify-content: space-between;
-    color: var(--color-text-subtle);
-    font-size: var(--fs-xs);
-  }
-  .foot-mono {
-    font-family: var(--font-mono);
-    letter-spacing: 0.05em;
-  }
-
   /* ─── RESPONSIVE ──────────────────────────── */
   @media (max-width: 720px) {
     .roster,
@@ -873,11 +853,6 @@
     .legacy-compact {
       flex-wrap: wrap;
       gap: var(--sp-2);
-    }
-    .site-foot {
-      flex-direction: column;
-      gap: var(--sp-2);
-      text-align: center;
     }
   }
 </style>
