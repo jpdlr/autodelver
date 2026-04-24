@@ -23,13 +23,13 @@
     atk: number;
     range: number;
     mp: number;
-    abilities?: string;
+    abilities?: string[];
     sprite: SpriteId;
   }
   const party: Classmeta[] = [
     { cls: 'warrior', name: 'Grimm', role: 'Tank', blurb: 'Front-line. High armour. Takes the hits.', hp: 45, atk: 7, range: 1, mp: 0, sprite: 'grimm-warrior' },
     { cls: 'ranger', name: 'Vex', role: 'DPS', blurb: 'Fragile. Deadly from three tiles away. Needs a tank.', hp: 30, atk: 8, range: 3, mp: 0, sprite: 'vex-ranger' },
-    { cls: 'cleric', name: 'Mira', role: 'Support', blurb: 'Short-range support. Heals wounds and can revive once per depth.', hp: 30, atk: 5, range: 2, mp: 10, abilities: 'Heal 5 HP · Revive 5 HP', sprite: 'mira-cleric' },
+    { cls: 'cleric', name: 'Mira', role: 'Support', blurb: 'Short-range support. Heals wounds and can revive once per depth.', hp: 30, atk: 5, range: 2, mp: 10, abilities: ['Heal 5 HP', 'Revive 5 HP'], sprite: 'mira-cleric' },
   ];
 </script>
 
@@ -96,18 +96,18 @@
           </div>
           <div class="role-blurb">{p.blurb}</div>
           <div class="role-stats">
-            <span>HP {p.hp}</span>
-            <span class="sep">·</span>
-            <span>ATK {p.atk}</span>
-            <span class="sep">·</span>
-            <span>RNG {p.range}</span>
-            <span class="sep">·</span>
-            <span>MP {p.mp}</span>
-            {#if p.abilities}
-              <span class="sep">·</span>
-              <span>{p.abilities}</span>
-            {/if}
+            <div class="stat-cell"><span class="lbl">HP</span><span class="val">{p.hp}</span></div>
+            <div class="stat-cell"><span class="lbl">ATK</span><span class="val">{p.atk}</span></div>
+            <div class="stat-cell"><span class="lbl">RNG</span><span class="val">{p.range}</span></div>
+            <div class="stat-cell"><span class="lbl">MP</span><span class="val">{p.mp}</span></div>
           </div>
+          {#if p.abilities}
+            <div class="role-abilities">
+              {#each p.abilities as ab}
+                <span class="ability-chip">{ab}</span>
+              {/each}
+            </div>
+          {/if}
         </div>
       {/each}
     </div>
@@ -446,19 +446,56 @@
     line-height: 1.5;
   }
   .role-stats {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--sp-2);
-    font-family: var(--font-mono);
-    font-size: var(--fs-xs);
-    color: var(--color-text-subtle);
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    padding-top: var(--sp-2);
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
+    padding-top: var(--sp-3);
     border-top: 1px dashed var(--color-border);
   }
-  .role-stats .sep {
-    color: var(--color-border-strong);
+  .stat-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    padding: 6px 4px;
+    background: var(--color-surface-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+  }
+  .stat-cell .lbl {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--color-text-subtle);
+  }
+  .stat-cell .val {
+    font-family: var(--font-mono);
+    font-size: var(--fs-md);
+    font-weight: 600;
+    color: var(--color-text);
+    line-height: 1;
+  }
+  .role-abilities {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 2px;
+  }
+  .ability-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 8px;
+    background: color-mix(in srgb, currentColor 12%, transparent);
+    color: currentColor;
+    border: 1px solid color-mix(in srgb, currentColor 35%, transparent);
+    border-radius: 999px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
   }
 
   /* ─── STEPS ───────────────────────────────── */
