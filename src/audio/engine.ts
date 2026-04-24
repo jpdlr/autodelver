@@ -122,22 +122,22 @@ export class AudioEngine {
     sub.start();
     starts.push(sub);
 
-    // ─── Detuned pad: 3 sawtooths through a slow-sweeping LPF ────────
-    // Held oscillator refs so the chord-progression scheduler can slide
-    // them to new pitches over time.
+    // ─── Flowy pad: soft triangles (not saws) through a very dark LPF
+    // so the foundation is warm rather than buzzy. Held oscillator refs
+    // let the chord-progression scheduler slide them slowly.
     const padFilter = ctx.createBiquadFilter();
     padFilter.type = 'lowpass';
-    padFilter.frequency.value = variant === 'boss' ? 360 : 480;
-    padFilter.Q.value = 3;
+    padFilter.frequency.value = variant === 'boss' ? 260 : 340;
+    padFilter.Q.value = 1.1;
     const padGain = ctx.createGain();
-    padGain.gain.value = variant === 'boss' ? 0.11 : 0.09;
+    padGain.gain.value = variant === 'boss' ? 0.14 : 0.12;
     padFilter.connect(padGain).connect(bed);
-    const padIntervals = variant === 'boss' ? [1, 2.12, 0.5] : [1, 1.5, 0.5];
-    const detunes = [-7, 0, 5];
+    const padIntervals = variant === 'boss' ? [1, 1.5, 0.5] : [1, 1.5, 0.5, 2];
+    const detunes = [-4, 0, 3, -2];
     const padOscs: OscillatorNode[] = [];
     padIntervals.forEach((mul, i) => {
       const o = ctx.createOscillator();
-      o.type = 'sawtooth';
+      o.type = 'triangle';
       o.frequency.value = rootHz * mul * 4;
       o.detune.value = detunes[i];
       o.connect(padFilter);
@@ -152,8 +152,9 @@ export class AudioEngine {
     const sweepLfo = ctx.createOscillator();
     const sweepGain = ctx.createGain();
     sweepLfo.type = 'sine';
-    sweepLfo.frequency.value = variant === 'boss' ? 0.06 : 0.04;
-    sweepGain.gain.value = variant === 'boss' ? 180 : 140;
+    // Very slow breath — filter opens/closes over ~30–45s, no audible wobble.
+    sweepLfo.frequency.value = variant === 'boss' ? 0.028 : 0.022;
+    sweepGain.gain.value = variant === 'boss' ? 90 : 70;
     sweepLfo.connect(sweepGain).connect(padFilter.frequency);
     sweepLfo.start();
     starts.push(sweepLfo);
@@ -170,7 +171,7 @@ export class AudioEngine {
       chordIdx = (chordIdx + 1 + Math.floor(Math.random() * (chordChoices.length - 1))) % chordChoices.length;
       const ratio = chordChoices[chordIdx];
       const now = ctx.currentTime;
-      const glide = 6; // seconds — slow slide between chords
+      const glide = 12; // seconds — very slow slide, barely perceptible
       subRoot.frequency.cancelScheduledValues(now);
       subRoot.frequency.setValueAtTime(subRoot.frequency.value, now);
       subRoot.frequency.linearRampToValueAtTime(rootHz * ratio, now + glide);
@@ -212,7 +213,8 @@ export class AudioEngine {
     // creepy dungeon sounds so the atmosphere keeps evolving.
     const envTimer = setInterval(() => {
       if (!this.ctx || !this.settings.enabled) return;
-      if (Math.random() > 0.45) return;
+      // Sparser so the bed breathes. ~25% chance per tick.
+      if (Math.random() > 0.25) return;
       const kinds: Array<() => void> = [
         () => {
           const pitch = variant === 'boss'
@@ -233,7 +235,7 @@ export class AudioEngine {
       ];
       const pick = kinds[Math.floor(Math.random() * kinds.length)];
       pick();
-    }, 2100);
+    }, 3200);
     intervals.push(envTimer);
 
     // ─── Slow melodic phrases — 3-4 notes from a minor scale ─────────
@@ -252,8 +254,8 @@ export class AudioEngine {
       for (let n = 0; n < noteCount; n++) {
         const mul = minor[Math.max(0, Math.min(minor.length - 1, idx))];
         const f = rootHz * 8 * mul * currentChordRatio;
-        this.phraseNote(f, 1.3, bed, delay);
-        delay += 0.45 + Math.random() * 0.25;
+        this.phraseNote(f, 2.2, bed, delay);
+        delay += 0.9 + Math.random() * 0.5;
         idx += (Math.random() < 0.5 ? -1 : 1);
       }
     }, variant === 'boss' ? 28000 : 34000);
@@ -305,7 +307,8 @@ export class AudioEngine {
     return buf;
   }
 
-  /** Short metallic/water ping used by the ambient drip scheduler. */
+  /** Soft water-drip / distant ping — slower attack and longer tail than
+   *  before so it sits inside the bed rather than pricking through it. */
   private drip(freq: number, dur: number, dest: AudioNode): void {
     if (!this.ctx) return;
     const ctx = this.ctx;
@@ -313,17 +316,19 @@ export class AudioEngine {
     const gain = ctx.createGain();
     const bp = ctx.createBiquadFilter();
     osc.type = 'sine';
-    osc.frequency.setValueAtTime(freq * 2, ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(freq, ctx.currentTime + dur * 0.7);
+    osc.frequency.setValueAtTime(freq * 1.6, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(freq, ctx.currentTime + dur * 0.8);
     bp.type = 'bandpass';
     bp.frequency.value = freq;
-    bp.Q.value = 8;
+    bp.Q.value = 4;
+    const peak = 0.14;
+    const total = dur * 1.8;
     gain.gain.setValueAtTime(0, ctx.currentTime);
-    gain.gain.linearRampToValueAtTime(0.25, ctx.currentTime + 0.01);
-    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + dur);
+    gain.gain.linearRampToValueAtTime(peak, ctx.currentTime + 0.04);
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + total);
     osc.connect(bp).connect(gain).connect(dest);
     osc.start();
-    osc.stop(ctx.currentTime + dur + 0.05);
+    osc.stop(ctx.currentTime + total + 0.05);
   }
 
   /** Creaking-wood / stressed-stone sound: short filtered noise swell with
@@ -390,7 +395,7 @@ export class AudioEngine {
     osc.stop(ctx.currentTime + dur + 0.05);
   }
 
-  /** Soft sine bell — short shimmering pitched note. */
+  /** Soft sine bell — slow attack, long shimmering tail. */
   private chime(freq: number, dur: number, dest: AudioNode): void {
     if (!this.ctx) return;
     const ctx = this.ctx;
@@ -398,35 +403,37 @@ export class AudioEngine {
     osc.type = 'sine';
     osc.frequency.value = freq;
     const gain = ctx.createGain();
+    const total = dur * 2.2;
     gain.gain.setValueAtTime(0, ctx.currentTime);
-    gain.gain.linearRampToValueAtTime(0.09, ctx.currentTime + 0.03);
-    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + dur);
+    gain.gain.linearRampToValueAtTime(0.055, ctx.currentTime + 0.18);
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + total);
     osc.connect(gain).connect(dest);
     osc.start();
-    osc.stop(ctx.currentTime + dur + 0.05);
+    osc.stop(ctx.currentTime + total + 0.05);
   }
 
-  /** One note of a slow melodic phrase — gentle triangle with long tail. */
+  /** One note of a slow melodic phrase — soft triangle, slow attack, very
+   *  long tail so phrases overlap and blur into the bed. */
   private phraseNote(freq: number, dur: number, dest: AudioNode, startDelay: number): void {
     if (!this.ctx) return;
     const ctx = this.ctx;
     const t0 = ctx.currentTime + startDelay;
     const osc = ctx.createOscillator();
-    osc.type = 'triangle';
+    osc.type = 'sine';
     osc.frequency.value = freq;
     const filter = ctx.createBiquadFilter();
     filter.type = 'lowpass';
-    filter.frequency.value = 2200;
+    filter.frequency.value = 1600;
     const gain = ctx.createGain();
+    const total = dur * 2.4;
     gain.gain.setValueAtTime(0, t0);
-    gain.gain.linearRampToValueAtTime(0.14, t0 + 0.08);
-    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-    // Slight pan so successive notes seem to shift position.
+    gain.gain.linearRampToValueAtTime(0.09, t0 + 0.35);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + total);
     const panner = ctx.createStereoPanner();
-    panner.pan.value = (Math.random() - 0.5) * 0.8;
+    panner.pan.value = (Math.random() - 0.5) * 0.6;
     osc.connect(filter).connect(gain).connect(panner).connect(dest);
     osc.start(t0);
-    osc.stop(t0 + dur + 0.05);
+    osc.stop(t0 + total + 0.05);
   }
 
   /** Low thud used by the boss ambient variant. */
