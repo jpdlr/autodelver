@@ -7,8 +7,9 @@ import { loadScript } from '../persistence/scripts';
 import { DEFAULT_META, type MetaProgression, type DelverClass } from '../engine/types';
 import { hasFirestoreConfig } from '../persistence/firebase';
 import { loadRankings, savePlayerProfile, submitRanking, type RankingEntry } from '../persistence/rankings';
+import { auth } from './auth.svelte';
 
-export type Screen = 'home' | 'tutorial' | 'loadout' | 'run' | 'postmortem';
+export type Screen = 'home' | 'tutorial' | 'loadout' | 'run' | 'postmortem' | 'leaderboard';
 
 export interface RunSummary {
   depth: number;
@@ -86,10 +87,13 @@ function createGame() {
     const causeOfDeath = [...world.events]
       .reverse()
       .find((e) => e.kind === 'death' || e.kind === 'damage')?.message ?? 'The dungeon closes without ceremony.';
+    // Prefer the signed-in identity; fall back to persisted meta for offline play.
+    const playerId = auth.user?.uid || meta.playerId;
+    const username = auth.codename || meta.username || 'Anonymous Delver';
     const runRecord = {
       id: `run-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
-      playerId: meta.playerId,
-      username: meta.username || 'Anonymous Delver',
+      playerId,
+      username,
       depth,
       ticks: world.tick,
       causeOfDeath,

@@ -16,6 +16,10 @@
     game.screen = 'loadout';
   }
 
+  function onLeaderboard(): void {
+    game.screen = 'leaderboard';
+  }
+
   const isFirstRun = $derived(game.meta.totalRuns === 0);
   let usernameDraft = $state(game.meta.username);
   let editingUsername = $state(!game.meta.username);
@@ -78,6 +82,7 @@
       {/if}
       <button type="button" onclick={onTutorial}>Tutorial</button>
       <button type="button" onclick={onLoadout}>Edit Scripts</button>
+      <button type="button" onclick={onLeaderboard}>Leaderboard</button>
     </div>
 
     {#if game.meta.totalRuns > 0}

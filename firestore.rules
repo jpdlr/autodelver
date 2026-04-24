@@ -2,17 +2,25 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Rankings (run results) — world-readable, authenticated writes only,
+    // and the playerId on the record must equal the caller's uid.
     match /rankings/{runId} {
       allow read: if true;
-      allow create: if isValidRanking();
+      allow create: if request.auth != null
+        && request.auth.uid == request.resource.data.playerId
+        && isValidRanking();
       allow update, delete: if false;
     }
 
+    // Player profiles — world-readable (so leaderboard can resolve names),
+    // writable only by the owner of that profile.
     match /players/{playerId} {
       allow read: if true;
-      allow create, update: if request.resource.data.keys().hasOnly(['username', 'updatedAt'])
+      allow create, update: if request.auth != null
+        && request.auth.uid == playerId
+        && request.resource.data.keys().hasOnly(['username', 'updatedAt'])
         && request.resource.data.username is string
-        && request.resource.data.username.size() > 0
+        && request.resource.data.username.size() >= 3
         && request.resource.data.username.size() <= 24;
       allow delete: if false;
     }

@@ -32,21 +32,15 @@ function _leader(ctx) {
 }
 `;
 
+const BLANK_SCRIPT = `function tick(ctx) {
+
+}
+`;
+
 export const DEFAULT_SCRIPTS: Record<DelverClass, string> = {
-  warrior: `function tick(ctx) {
-  return { type: 'wait' };
-}
-`,
-
-  ranger: `function tick(ctx) {
-  return { type: 'wait' };
-}
-`,
-
-  cleric: `function tick(ctx) {
-  return { type: 'wait' };
-}
-`,
+  warrior: BLANK_SCRIPT,
+  ranger: BLANK_SCRIPT,
+  cleric: BLANK_SCRIPT,
 };
 
 export const TUTORIAL_SCRIPTS: Record<DelverClass, string> = {
