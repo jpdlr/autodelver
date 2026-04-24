@@ -1,6 +1,7 @@
 <script lang="ts">
   import MonacoEditor from './MonacoEditor.svelte';
   import ApiReference from './ApiReference.svelte';
+  import ScriptNotebook from './ScriptNotebook.svelte';
   import { game } from '../stores/game.svelte';
   import { DEFAULT_SCRIPTS, saveScript } from '../persistence/scripts';
   import type { DelverClass } from '../engine/types';
@@ -13,6 +14,7 @@
 
   let activeClass = $state<DelverClass>('warrior');
   let showApi = $state<boolean>(true);
+  let showNotebook = $state<boolean>(false);
   const classes: DelverClass[] = ['warrior', 'ranger', 'cleric'];
   const classNames: Record<DelverClass, string> = {
     warrior: 'Grimm',
@@ -30,11 +32,18 @@
     saveScript(activeClass, v);
   }
 
-  function reset(): void {
-    const fresh = DEFAULT_SCRIPTS[activeClass];
-    game.setScript(activeClass, fresh);
-    saveScript(activeClass, fresh);
+  function applyScript(script: string): void {
+    game.setScript(activeClass, script);
+    saveScript(activeClass, script);
   }
+
+  // Prefer the in-memory launch snapshot (same session) but fall back to
+  // the most recent persisted runHistory entry that has launchScripts.
+  const lastRunScript = $derived<string | null>(
+    game.lastLaunchScripts?.[activeClass]
+      ?? game.meta.runHistory.find((r) => r.launchScripts?.[activeClass])?.launchScripts?.[activeClass]
+      ?? null,
+  );
 </script>
 
 <div class="panel" class:compact>
@@ -62,19 +71,38 @@
       {/each}
     </div>
     <div class="header-actions">
-      <button type="button" class="ghost small" onclick={() => (showApi = !showApi)}>
-        {showApi ? 'Hide reference' : 'Show reference'}
+      <button
+        type="button"
+        class="ghost small"
+        class:toggle-active={showNotebook}
+        onclick={() => (showNotebook = !showNotebook)}
+        title="Save, name, and restore script drafts"
+      >
+        {showNotebook ? 'Hide notebook' : 'Notebook'}
       </button>
-      <button type="button" class="ghost small" onclick={reset}>Reset</button>
+      <button type="button" class="ghost small" onclick={() => (showApi = !showApi)}>
+        {showApi ? 'Hide reference' : 'Reference'}
+      </button>
       {#if onClose}
         <button type="button" class="primary" onclick={onClose}>Apply & Resume</button>
       {/if}
     </div>
   </header>
 
-  <div class="editor-body" class:has-api={showApi}>
+  <div class="editor-body" class:has-api={showApi} class:has-notebook={showNotebook}>
     <div class="editor-col">
       <MonacoEditor value={game.scripts[activeClass]} onChange={onChange} />
+      {#if showNotebook}
+        <div class="notebook-host">
+          <ScriptNotebook
+            cls={activeClass}
+            currentScript={game.scripts[activeClass]}
+            defaultScript={DEFAULT_SCRIPTS[activeClass]}
+            lastRunScript={lastRunScript}
+            onRestore={applyScript}
+          />
+        </div>
+      {/if}
     </div>
     {#if showApi}
       <div class="api-col">
@@ -199,6 +227,12 @@
     gap: var(--sp-2);
   }
 
+  .header-actions .toggle-active {
+    color: var(--color-accent);
+    border-color: color-mix(in srgb, var(--color-accent) 40%, transparent);
+    background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+  }
+
   .editor-body {
     flex: 1;
     min-height: 0;
@@ -213,6 +247,15 @@
   .editor-col {
     min-height: 0;
     display: flex;
+    flex-direction: column;
+  }
+  .notebook-host {
+    flex-shrink: 0;
+    padding: var(--sp-2);
+    border-top: 1px solid var(--color-border);
+    background: var(--color-surface);
+    max-height: 40%;
+    overflow-y: auto;
   }
 
   .api-col {

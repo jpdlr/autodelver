@@ -1,6 +1,7 @@
 <script lang="ts">
   import { game } from '../../stores/game.svelte';
   import { sprites, type SpriteId } from '../sprites';
+  import ReplayScrubber from '../ReplayScrubber.svelte';
 
   function home(): void {
     game.returnHome();
@@ -97,6 +98,10 @@
           </ol>
         </section>
       </div>
+    {/if}
+
+    {#if game.lastRunTrace && game.lastRunTrace.frames.length > 1}
+      <ReplayScrubber trace={game.lastRunTrace} />
     {/if}
 
     <div class="actions">

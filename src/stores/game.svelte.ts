@@ -1,4 +1,4 @@
-import type { Delver, LogEvent, World } from '../engine/types';
+import type { Delver, LogEvent, RunTrace, TickFrame, World } from '../engine/types';
 import { advanceTick } from '../engine/tick';
 import { createWorld, spawnDelver } from '../engine/world';
 import { SandboxHost } from '../sandbox/host';
@@ -25,6 +25,12 @@ function createGame() {
   let meta = $state<MetaProgression>({ ...DEFAULT_META });
   let speed = $state<number>(1);
   let lastRunSummary = $state<RunSummary | null>(null);
+  // In-memory trace of the most recent run — used by the PostMortem replay
+  // scrubber. Cleared when a new run starts.
+  let lastRunTrace = $state<RunTrace | null>(null);
+  // Scripts captured at launch time so the notebook can offer
+  // "Restore from last run" and the run record can pin what was used.
+  let lastLaunchScripts: { warrior: string; ranger: string; cleric: string } | null = null;
   let onlineRankings = $state<RankingEntry[]>([]);
   let rankingStatus = $state<'disabled' | 'loading' | 'ready' | 'error'>(
     hasFirestoreConfig() ? 'loading' : 'disabled',
@@ -125,7 +131,33 @@ function createGame() {
     const { actions, events } = await host.step(world, unlocked);
     if (events.length) world.events.push(...events);
     advanceTick(world, { delverActions: actions });
+    captureFrame();
     world = { ...world };
+  }
+
+  function captureFrame(): void {
+    if (!world || !lastRunTrace) return;
+    // Cap at 1000 frames (~1000 ticks) — enough for any reasonable run
+    // and keeps memory in check. Older frames drop off the front.
+    const frame: TickFrame = {
+      tick: world.tick,
+      delvers: world.delvers.map((d) => ({
+        id: d.id,
+        x: d.pos.x,
+        y: d.pos.y,
+        hp: d.hp,
+        mp: d.mp,
+        downedFor: d.downedFor,
+      })),
+      enemies: world.enemies.map((e) => ({
+        id: e.id,
+        x: e.pos.x,
+        y: e.pos.y,
+        hp: e.hp,
+      })),
+    };
+    lastRunTrace.frames.push(frame);
+    if (lastRunTrace.frames.length > 1000) lastRunTrace.frames.shift();
   }
 
   function finaliseRun(): void {
@@ -151,7 +183,13 @@ function createGame() {
       causeOfDeath,
       insightEarned: insight,
       finishedAt: new Date().toISOString(),
+      launchScripts: lastLaunchScripts ? { ...lastLaunchScripts } : undefined,
     };
+    // Freeze the event log onto the trace so the replay scrubber has
+    // it without racing the live world mutations.
+    if (lastRunTrace) {
+      lastRunTrace.events = [...world.events];
+    }
     meta.runHistory = [runRecord, ...meta.runHistory]
       .sort((a, b) => b.depth - a.depth || a.ticks - b.ticks)
       .slice(0, 25);
@@ -252,6 +290,34 @@ function createGame() {
       console.error('Failed to load delver worker:', err);
     }
     world = createWorld({ seed, depth: 1, delvers });
+
+    // Snapshot the scripts that launched this run, for the notebook's
+    // "Restore from last run" action and the run record.
+    lastLaunchScripts = { ...scripts };
+
+    // Start a fresh trace — frames collect once per advance().
+    lastRunTrace = {
+      grid: world.grid,
+      stairs: world.stairs,
+      entrance: world.entrance,
+      delverMeta: world.delvers.map((d) => ({
+        id: d.id,
+        class: d.class,
+        name: d.name,
+        maxHp: d.maxHp,
+        maxMp: d.maxMp,
+      })),
+      enemyMeta: world.enemies.map((e) => ({
+        id: e.id,
+        archetype: e.archetype,
+        maxHp: e.maxHp,
+      })),
+      frames: [],
+      events: [],
+      launchScripts: { ...lastLaunchScripts },
+    };
+    captureFrame(); // tick 0 baseline
+
     screen = 'run';
     speed = 1;
     loopOnce();
@@ -271,6 +337,32 @@ function createGame() {
     meta.deepestDepth = Math.max(meta.deepestDepth, nextDepth);
     saveMeta(meta);
     speed = 1;
+
+    // Reset the trace to cover only the CURRENT floor — replay scope is
+    // "show me how this floor went", not the whole descent.
+    if (lastRunTrace) {
+      lastRunTrace = {
+        grid: world.grid,
+        stairs: world.stairs,
+        entrance: world.entrance,
+        delverMeta: world.delvers.map((d) => ({
+          id: d.id,
+          class: d.class,
+          name: d.name,
+          maxHp: d.maxHp,
+          maxMp: d.maxMp,
+        })),
+        enemyMeta: world.enemies.map((e) => ({
+          id: e.id,
+          archetype: e.archetype,
+          maxHp: e.maxHp,
+        })),
+        frames: [],
+        events: [],
+        launchScripts: lastRunTrace.launchScripts,
+      };
+      captureFrame();
+    }
   }
 
   return {
@@ -291,6 +383,12 @@ function createGame() {
     },
     get lastRunSummary() {
       return lastRunSummary;
+    },
+    get lastRunTrace() {
+      return lastRunTrace;
+    },
+    get lastLaunchScripts() {
+      return lastLaunchScripts;
     },
     get onlineRankings() {
       return onlineRankings;

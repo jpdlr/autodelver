@@ -14,21 +14,32 @@ Roadmap milestones M3–M6 (party signals, full unlock tree, offline progress, o
 
 ## Quick start
 
+Using npm:
+
 ```bash
 npm install
 npm run dev
+```
+
+Using Bun:
+
+```bash
+bun install
+bun run dev
 ```
 
 Then open http://localhost:5173.
 
 ### Other scripts
 
+All scripts work with both `npm` and `bun` — substitute `bun run` for `npm run` as needed.
+
 | Script | What it does |
 |---|---|
 | `npm run dev` | Start Vite dev server |
 | `npm run build` | Type-check + production bundle into `dist/` |
 | `npm run check` | `svelte-check` type pass |
-| `npm test` | Run Vitest unit tests (engine core) |
+| `npm test` / `bun test` | Run Vitest unit tests (engine core) |
 | `npm run test:watch` | Vitest in watch mode |
 | `npm run preview` | Serve the production build locally |
 
