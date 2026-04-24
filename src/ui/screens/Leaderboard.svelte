@@ -1,18 +1,39 @@
 <script lang="ts">
   import { game } from '../../stores/game.svelte';
   import { auth } from '../../stores/auth.svelte';
-  import { loadRankings, type RankingEntry } from '../../persistence/rankings';
+  import { loadRankings, rankingScore, type RankingEntry } from '../../persistence/rankings';
+  import type { RunRecord } from '../../engine/types';
   import { onMount } from 'svelte';
 
-  let entries = $state<RankingEntry[]>([]);
+  let onlineEntries = $state<RankingEntry[]>([]);
   let loading = $state(true);
   let error = $state<string | null>(null);
+
+  // Local fallback: dedupe runHistory by player so each shows their best
+  // run — matches the Home screen's leaderboard behaviour so the two
+  // surfaces never disagree.
+  const localEntries = $derived.by<RankingEntry[]>(() => {
+    const best = new Map<string, RunRecord>();
+    for (const r of game.meta.runHistory) {
+      const key = r.playerId || r.username;
+      const prev = best.get(key);
+      if (!prev || rankingScore(r) > rankingScore(prev)) best.set(key, r);
+    }
+    return [...best.values()]
+      .sort((a, b) => rankingScore(b) - rankingScore(a))
+      .map((r) => ({ ...r, score: rankingScore(r) }));
+  });
+
+  const entries = $derived<RankingEntry[]>(
+    onlineEntries.length ? onlineEntries : localEntries,
+  );
+  const showingLocal = $derived(onlineEntries.length === 0 && localEntries.length > 0);
 
   async function refresh(): Promise<void> {
     loading = true;
     error = null;
     try {
-      entries = await loadRankings(50);
+      onlineEntries = await loadRankings(50);
     } catch (e) {
       error = e instanceof Error ? e.message : String(e);
     } finally {
@@ -20,7 +41,12 @@
     }
   }
 
-  onMount(refresh);
+  onMount(() => {
+    // Seed with whatever the game store already has so users don't see a
+    // flash of empty state on mount.
+    if (game.onlineRankings.length) onlineEntries = game.onlineRankings;
+    void refresh();
+  });
 
   function formatDate(iso: string): string {
     try {
@@ -64,7 +90,11 @@
     {:else if entries.length === 0}
       <div class="empty">No runs submitted yet. Be the first to fall in public.</div>
     {:else}
-      <ol class="rows">
+      <div class="col">
+        {#if showingLocal}
+          <div class="local-note">Showing local run history — Firestore returned no entries.</div>
+        {/if}
+        <ol class="rows">
         {#each entries as e, i}
           <li class="row" class:you={e.playerId === ownUid}>
             <span class="rank">{i + 1}</span>
@@ -83,7 +113,8 @@
             </div>
           </li>
         {/each}
-      </ol>
+        </ol>
+      </div>
     {/if}
   </div>
 </section>
@@ -150,8 +181,23 @@
   }
   .err { color: var(--color-danger, #c94a4a); }
 
-  .rows {
+  .col {
     width: min(880px, 100%);
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-3);
+  }
+  .local-note {
+    padding: var(--sp-2) var(--sp-3);
+    background: var(--color-surface);
+    border: 1px dashed var(--color-border);
+    border-radius: var(--radius-sm);
+    color: var(--color-text-subtle);
+    font-size: var(--fs-xs);
+    text-align: center;
+  }
+  .rows {
+    width: 100%;
     list-style: none;
     margin: 0;
     padding: 0;
