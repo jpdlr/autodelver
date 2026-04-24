@@ -75,41 +75,55 @@
     <div class="header-actions">
       <button
         type="button"
-        class="icon-toggle"
-        class:toggle-active={showNotebook}
+        class="icon-btn"
+        class:active={showNotebook}
         onclick={() => (showNotebook = !showNotebook)}
-        title={showNotebook ? 'Hide notebook' : 'Show notebook — save, name, and restore drafts'}
+        title={showNotebook ? 'Hide notebook' : 'Notebook — save, name, restore drafts'}
+        aria-label="Toggle notebook"
         aria-pressed={showNotebook}
       >
-        <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true">
+        <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
           <rect x="3" y="2" width="10" height="12" rx="1.5" stroke="currentColor" stroke-width="1.3" fill="none"/>
           <path d="M3 2v12" stroke="currentColor" stroke-width="1.3"/>
           <path d="M6 5h5M6 8h5M6 11h3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
         </svg>
-        <span>Notebook</span>
       </button>
       <button
         type="button"
-        class="icon-toggle"
-        class:toggle-active={showApi}
+        class="icon-btn"
+        class:active={showApi}
         onclick={() => (showApi = !showApi)}
-        title={showApi ? 'Hide reference' : 'Show the ctx/action reference'}
+        title={showApi ? 'Hide reference' : 'Reference — ctx + actions'}
+        aria-label="Toggle API reference"
         aria-pressed={showApi}
       >
-        <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true">
+        <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
           <circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.3" fill="none"/>
           <path d="M6.2 6.2a1.8 1.8 0 1 1 2.3 2.3c-.5.2-.8.5-.8 1v.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" fill="none"/>
           <circle cx="8" cy="12" r="0.7" fill="currentColor"/>
         </svg>
-        <span>Reference</span>
       </button>
       {#if onClose}
-        <button type="button" class="primary" onclick={onClose}>Apply & Resume</button>
+        <button
+          type="button"
+          class="icon-btn primary-icon"
+          onclick={onClose}
+          title="Apply & Resume"
+          aria-label="Apply changes and resume"
+        >
+          <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+            <path d="M5 3l7 5-7 5z" fill="currentColor"/>
+          </svg>
+        </button>
       {/if}
     </div>
   </header>
 
-  <div class="editor-body" class:has-api={showApi} class:has-notebook={showNotebook}>
+  <div
+    class="editor-body"
+    class:has-api={showApi && !compact}
+    class:has-notebook={showNotebook}
+  >
     <div class="editor-col">
       <MonacoEditor value={game.scripts[activeClass]} onChange={onChange} />
       {#if showNotebook}
@@ -124,12 +138,38 @@
         </div>
       {/if}
     </div>
-    {#if showApi}
+    {#if showApi && !compact}
       <div class="api-col">
         <ApiReference />
       </div>
     {/if}
   </div>
+
+  {#if showApi && compact}
+    <!-- Compact (mid-run side-panel) variant: the panel is too narrow to
+         split, so the reference slides over the editor as a drawer and
+         can be dismissed with its own close button. -->
+    <div class="api-drawer" role="dialog" aria-label="API reference">
+      <header class="drawer-head">
+        <div>
+          <p class="eyebrow">Reference</p>
+          <h3>API</h3>
+        </div>
+        <button
+          type="button"
+          class="drawer-close"
+          onclick={() => (showApi = false)}
+          title="Close reference"
+          aria-label="Close reference"
+        >
+          <svg viewBox="0 0 16 16" width="14" height="14"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        </button>
+      </header>
+      <div class="drawer-body">
+        <ApiReference />
+      </div>
+    </div>
+  {/if}
   <footer class="hint">
     Autosaves as you type. Changes go live on resume — reloaded workers start
     running the new script next tick.
@@ -138,6 +178,7 @@
 
 <style>
   .panel {
+    position: relative;
     display: flex;
     flex-direction: column;
     height: 100%;
@@ -247,38 +288,46 @@
     gap: var(--sp-2);
   }
 
-  .icon-toggle {
+  .icon-btn {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 6px 10px;
-    font-size: var(--fs-xs);
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
     background: transparent;
     border: 1px solid var(--color-border);
     border-radius: var(--radius-sm);
     color: var(--color-text-muted);
+    cursor: pointer;
     transition: color var(--dur-fast) var(--ease-out),
                 background var(--dur-fast) var(--ease-out),
                 border-color var(--dur-fast) var(--ease-out);
   }
-  .icon-toggle:hover {
+  .icon-btn:hover {
     color: var(--color-accent);
     border-color: var(--color-accent);
     background: color-mix(in srgb, var(--color-accent) 8%, transparent);
   }
-  .icon-toggle svg {
-    flex-shrink: 0;
-    color: inherit;
-  }
-  .icon-toggle.toggle-active {
+  .icon-btn.active {
     color: var(--color-accent);
     border-color: color-mix(in srgb, var(--color-accent) 55%, transparent);
     background: color-mix(in srgb, var(--color-accent) 14%, transparent);
   }
-  .icon-toggle.toggle-active:hover {
+  .icon-btn.active:hover {
     border-color: var(--color-accent);
     background: color-mix(in srgb, var(--color-accent) 22%, transparent);
   }
+  .icon-btn.primary-icon {
+    color: var(--color-text-inverse);
+    background: var(--color-accent);
+    border-color: var(--color-accent);
+  }
+  .icon-btn.primary-icon:hover {
+    background: var(--color-accent-hover, var(--color-accent));
+    color: var(--color-text-inverse);
+  }
+  .icon-btn svg { display: block; }
 
   .editor-body {
     flex: 1;
@@ -339,5 +388,70 @@
     background: var(--color-surface-2);
     border-top: 1px solid var(--color-border);
     flex-shrink: 0;
+  }
+
+  /* ─── Reference drawer (compact / mid-run layout) ──────────────── */
+  .api-drawer {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: min(360px, 88%);
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    background: var(--color-surface-2);
+    border-left: 1px solid var(--color-border);
+    box-shadow: -8px 0 18px color-mix(in srgb, #000 25%, transparent);
+    z-index: 3;
+    animation: slideIn var(--dur-base) var(--ease-out);
+  }
+  @keyframes slideIn {
+    from { transform: translateX(12px); opacity: 0; }
+    to   { transform: translateX(0);    opacity: 1; }
+  }
+  .drawer-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--sp-2);
+    padding: var(--sp-3) var(--sp-3) var(--sp-2);
+    border-bottom: 1px solid var(--color-border);
+  }
+  .drawer-head .eyebrow {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--color-text-subtle);
+  }
+  .drawer-head h3 {
+    margin: 2px 0 0;
+    color: var(--color-text);
+    font-size: var(--fs-md);
+  }
+  .drawer-close {
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
+    color: var(--color-text-subtle);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .drawer-close:hover {
+    color: var(--color-text);
+    border-color: var(--color-border);
+    background: var(--color-surface);
+  }
+  .drawer-body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: var(--sp-2);
   }
 </style>
