@@ -219,7 +219,10 @@ describe('world & golden run', () => {
 
     advanceTick(w, { delverActions: new Map([[c.id, { type: 'revive', target: target.id }]]) });
 
-    expect(target.hp).toBe(5);
+    // Revive restores max(12, 40% of maxHp). Warrior default maxHp is 40
+    // (base), so 40% = 16. We assert the rule, not the exact number, so
+    // this stays correct if class HP is retuned.
+    expect(target.hp).toBe(Math.min(Math.max(12, Math.floor(target.maxHp * 0.4)), target.maxHp));
     expect(target.downedFor).toBe(0);
     expect(c.mp).toBe(0);
     expect(c.reviveUsedDepth).toBe(1);

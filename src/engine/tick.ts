@@ -139,7 +139,9 @@ function applyDelverAction(world: World, d: Delver, action: Action, rng: Rng): v
       if (!target || target.id === d.id || distCheb(d.pos, target.pos) > d.range) return;
       d.mp -= 10;
       d.reviveUsedDepth = world.depth;
-      target.hp = Math.min(5, target.maxHp);
+      // Revive restores ~40% of max HP, capped — now that death persists
+      // across floors, 5 HP felt too thin to survive the next swing.
+      target.hp = Math.min(Math.max(12, Math.floor(target.maxHp * 0.4)), target.maxHp);
       target.downedFor = 0;
       world.events.push({
         tick: world.tick,

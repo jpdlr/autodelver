@@ -57,9 +57,9 @@
     sprite: SpriteId;
   }
   const party: Classmeta[] = [
-    { cls: 'warrior', name: 'Grimm', role: 'Tank', blurb: 'Front-line. High armour. Takes the hits.', hp: 45, atk: 7, range: 1, mp: 0, abilities: ['Heavy armour', 'Melee only'], sprite: 'grimm-warrior' },
-    { cls: 'ranger', name: 'Vex', role: 'DPS', blurb: 'Fragile. Deadly from three tiles away. Needs a tank.', hp: 30, atk: 8, range: 3, mp: 0, abilities: ['Ranged 3', 'Glass cannon'], sprite: 'vex-ranger' },
-    { cls: 'cleric', name: 'Mira', role: 'Support', blurb: 'Short-range support. Heals wounds and can revive once per depth.', hp: 30, atk: 5, range: 2, mp: 10, abilities: ['Heal 5 HP', 'Revive 5 HP'], sprite: 'mira-cleric' },
+    { cls: 'warrior', name: 'Grimm', role: 'Tank', blurb: 'Front-line. High armour. Takes the hits.', hp: 55, atk: 10, range: 1, mp: 0, abilities: ['Heavy armour', 'Melee only'], sprite: 'grimm-warrior' },
+    { cls: 'ranger', name: 'Vex', role: 'DPS', blurb: 'Fragile. Deadly from three tiles away. Needs a tank.', hp: 34, atk: 11, range: 3, mp: 0, abilities: ['Ranged 3', 'Glass cannon'], sprite: 'vex-ranger' },
+    { cls: 'cleric', name: 'Mira', role: 'Support', blurb: 'Short-range support. Heals wounds and can revive once per depth.', hp: 34, atk: 6, range: 2, mp: 12, abilities: ['Heal 5 HP', 'Revive ~40%'], sprite: 'mira-cleric' },
   ];
 
   interface EnemyMeta {

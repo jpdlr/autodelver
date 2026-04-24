@@ -79,11 +79,13 @@ export function spawnEnemy(
   opts: { boss?: boolean } = {},
 ): Enemy {
   const s = ENEMY_STATS[archetype];
-  const depthScale = 1 + (depth - 1) * 0.15;
+  // Slightly softer depth curve than before (10% per depth vs 15%) so the
+  // ramp stays fair for a well-tuned script.
+  const depthScale = 1 + (depth - 1) * 0.10;
   const boss = opts.boss ?? false;
-  // Boss: 3× HP, +50% attack, +1 armor. Still scales with depth.
-  const hpMul = boss ? 3 : 1;
-  const atkMul = boss ? 1.5 : 1;
+  // Boss: 2.5× HP, +35% attack, +1 armor. Boss still scales with depth.
+  const hpMul = boss ? 2.5 : 1;
+  const atkMul = boss ? 1.35 : 1;
   const armorBonus = boss ? 1 : 0;
   return {
     id: nextId('e'),
@@ -155,7 +157,8 @@ export function createWorld(params: NewRunParams): World {
       enemies.push(spawnEnemy(archetype, pos, params.depth, rngInt(rng, 0, 1e9)));
     }
   } else {
-    const enemyCount = 3 + Math.floor(params.depth * 1.7);
+    // Lighter spawn density so floors don't become attrition grinders.
+    const enemyCount = 2 + Math.floor(params.depth * 1.2);
     const spawnPositions = pickSpawnsInRooms(dungeon.rooms, rng, enemyCount, [dungeon.entrance]);
     for (const pos of spawnPositions) {
       const archetype = rngPick<EnemyArchetype>(rng, pool);
