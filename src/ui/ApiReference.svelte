@@ -61,7 +61,7 @@
     },
     {
       name: "{ type: 'wait' }",
-      desc: 'Do nothing this tick. Regens a little MP.',
+      desc: 'Do nothing this tick. Regens +1 MP immediately (on top of the passive +1 every 10 ticks).',
     },
   ];
 

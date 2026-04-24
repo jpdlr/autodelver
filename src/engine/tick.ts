@@ -229,6 +229,13 @@ function postTick(world: World): void {
     }
   }
 
+  // MP regen: +1 every 10 ticks for any living delver below max.
+  if (world.tick % 10 === 0) {
+    for (const d of world.delvers) {
+      if (d.hp > 0 && d.mp < d.maxMp) d.mp++;
+    }
+  }
+
   // HP regen out-of-combat
   const anyEnemyNear = world.delvers.some((d) =>
     world.enemies.some((e) => e.hp > 0 && distCheb(d.pos, e.pos) <= 4),
