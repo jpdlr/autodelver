@@ -388,7 +388,10 @@ function createGame() {
     world = createWorld({ seed: world.seed, depth: nextDepth, delvers: survivors });
     meta.deepestDepth = Math.max(meta.deepestDepth, nextDepth);
     saveMeta(meta);
-    speed = 1;
+    // Keep whatever speed the player had on the previous floor. Only
+    // resume playback if we happen to be paused (speed 0), so the new
+    // floor actually starts ticking.
+    if (speed === 0) speed = 1;
     // Swap ambient beds between normal / boss floors so the music cue
     // lines up with the visual change.
     audio.startAmbient(isBossFloor(nextDepth) ? 'boss' : 'calm');
