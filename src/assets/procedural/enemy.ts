@@ -65,6 +65,12 @@ function bodyPath(archetype: EnemyArchetype, rng: () => number, corruption: numb
       return `M 4 ${wobble(4)} L ${wobble(8)} ${wobble(2)} L 12 ${wobble(4)} L 13 ${wobble(12)} L 8 ${wobble(14)} L 3 ${wobble(12)} Z`;
     case 'wraith':
       return `M 4 ${wobble(3)} L 12 ${wobble(3)} L ${wobble(14)} 8 L ${wobble(13)} ${wobble(13)} L ${wobble(10)} ${wobble(12)} L 8 ${wobble(14)} L ${wobble(6)} ${wobble(12)} L ${wobble(3)} ${wobble(13)} L ${wobble(2)} 8 Z`;
+    case 'brute':
+      // Squat hulking silhouette with broad shoulders.
+      return `M ${wobble(2)} ${wobble(6)} L ${wobble(4)} ${wobble(3)} L ${wobble(12)} ${wobble(3)} L ${wobble(14)} ${wobble(6)} L ${wobble(14)} ${wobble(13)} L ${wobble(10)} ${wobble(14)} L ${wobble(6)} ${wobble(14)} L ${wobble(2)} ${wobble(13)} Z`;
+    case 'lich':
+      // Tall, narrow, crowned — tapered head, flaring robe.
+      return `M ${wobble(7)} ${wobble(2)} L ${wobble(9)} ${wobble(2)} L ${wobble(11)} ${wobble(5)} L ${wobble(13)} ${wobble(10)} L ${wobble(14)} ${wobble(14)} L ${wobble(8)} ${wobble(13)} L ${wobble(2)} ${wobble(14)} L ${wobble(3)} ${wobble(10)} L ${wobble(5)} ${wobble(5)} Z`;
   }
 }
 

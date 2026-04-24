@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createWorld, spawnDelver, resetEntityCounter } from './world';
+import { createWorld, isBossFloor, spawnDelver, resetEntityCounter } from './world';
 import { advanceTick } from './tick';
 import type { Action } from './types';
 import { isWalkable } from './grid';
@@ -151,6 +151,50 @@ describe('world & golden run', () => {
     expect(target.hp).toBe(25);
     expect(c.mp).toBe(8);
     expect(c.cooldowns.heal).toBe(3);
+  });
+
+  it('boss floors spawn exactly one elite enemy on the stairs', () => {
+    resetEntityCounter();
+    const w = createWorld({
+      seed: 'bossA',
+      depth: 5,
+      delvers: [spawnDelver({ class: 'warrior', name: 'G', pos: { x: 0, y: 0 }, script: '' })],
+    });
+    expect(isBossFloor(5)).toBe(true);
+    const bosses = w.enemies.filter((e) => e.isBoss);
+    expect(bosses.length).toBe(1);
+    expect(bosses[0].pos).toEqual(w.stairs);
+    // Boss should have substantially more HP than a regular-floor archetype.
+    expect(bosses[0].maxHp).toBeGreaterThan(40);
+  });
+
+  it('non-boss floors have no elites', () => {
+    resetEntityCounter();
+    const w = createWorld({
+      seed: 'regA',
+      depth: 3,
+      delvers: [spawnDelver({ class: 'warrior', name: 'G', pos: { x: 0, y: 0 }, script: '' })],
+    });
+    expect(isBossFloor(3)).toBe(false);
+    expect(w.enemies.every((e) => !e.isBoss)).toBe(true);
+  });
+
+  it('depth scaling makes deeper enemies tougher', () => {
+    resetEntityCounter();
+    const shallow = createWorld({
+      seed: 'scaleA',
+      depth: 1,
+      delvers: [spawnDelver({ class: 'warrior', name: 'G', pos: { x: 0, y: 0 }, script: '' })],
+    });
+    resetEntityCounter();
+    const deep = createWorld({
+      seed: 'scaleA',
+      depth: 4,
+      delvers: [spawnDelver({ class: 'warrior', name: 'G', pos: { x: 0, y: 0 }, script: '' })],
+    });
+    const shallowAvg = shallow.enemies.reduce((s, e) => s + e.maxHp, 0) / shallow.enemies.length;
+    const deepAvg = deep.enemies.reduce((s, e) => s + e.maxHp, 0) / deep.enemies.length;
+    expect(deepAvg).toBeGreaterThan(shallowAvg);
   });
 
   it('cleric revives once per depth', () => {

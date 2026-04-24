@@ -149,20 +149,39 @@
       ctx.fill();
       const spriteId = archetypeSprite[e.archetype] ?? 'slime';
       const img = loadSprite(spriteId);
+      // Bosses render larger and wear a crimson sigil-ring so they're
+      // unmistakable even at a glance.
+      const scale = e.isBoss ? 1.55 : 1;
+      const draw = tileSize * scale;
+      const dx = px + (tileSize - draw) / 2;
+      const dy = py + (tileSize - draw) / 2;
+      if (e.isBoss) {
+        ctx.strokeStyle = 'rgba(200, 72, 72, 0.85)';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([4, 3]);
+        ctx.beginPath();
+        ctx.arc(px + tileSize / 2, py + tileSize / 2, draw * 0.55, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
       if (img) {
-        ctx.drawImage(img, px, py, tileSize, tileSize);
+        ctx.drawImage(img, dx, dy, draw, draw);
       } else {
         ctx.fillStyle = '#9e3d43';
         ctx.beginPath();
-        ctx.arc(px + tileSize / 2, py + tileSize / 2, tileSize * 0.32, 0, Math.PI * 2);
+        ctx.arc(px + tileSize / 2, py + tileSize / 2, draw * 0.32, 0, Math.PI * 2);
         ctx.fill();
       }
-      // hp bar
+      // hp bar — wider for bosses, mounted slightly higher.
       const hpFrac = e.hp / e.maxHp;
+      const barW = e.isBoss ? tileSize - 2 : tileSize - 6;
+      const barX = px + (tileSize - barW) / 2;
+      const barY = e.isBoss ? py - 1 : py + 1;
+      const barH = e.isBoss ? 3 : 2.5;
       ctx.fillStyle = 'rgba(0,0,0,0.5)';
-      ctx.fillRect(px + 3, py + 1, tileSize - 6, 2.5);
-      ctx.fillStyle = '#9e3d43';
-      ctx.fillRect(px + 3, py + 1, (tileSize - 6) * hpFrac, 2.5);
+      ctx.fillRect(barX, barY, barW, barH);
+      ctx.fillStyle = e.isBoss ? '#d16464' : '#9e3d43';
+      ctx.fillRect(barX, barY, barW * hpFrac, barH);
     }
 
     // delvers — generated hero sprite per class; dimmed if downed

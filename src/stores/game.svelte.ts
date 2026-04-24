@@ -1,6 +1,6 @@
 import type { Delver, LogEvent, RunTrace, TickFrame, World } from '../engine/types';
 import { advanceTick } from '../engine/tick';
-import { createWorld, spawnDelver } from '../engine/world';
+import { createWorld, isBossFloor, spawnDelver } from '../engine/world';
 import { SandboxHost } from '../sandbox/host';
 import { loadMeta, saveMeta } from '../persistence/meta';
 import { loadScript } from '../persistence/scripts';
@@ -9,6 +9,7 @@ import { hasFirestoreConfig } from '../persistence/firebase';
 import { loadRankings, savePlayerProfile, submitRanking, type RankingEntry } from '../persistence/rankings';
 import { loadCloudScripts, makeScriptSync } from '../persistence/cloudScripts';
 import { auth } from './auth.svelte';
+import { audio } from './audio.svelte';
 
 export type Screen = 'home' | 'tutorial' | 'loadout' | 'run' | 'postmortem' | 'leaderboard';
 
@@ -37,6 +38,9 @@ function createGame() {
   );
   let editingMidRun = $state<boolean>(false);
   let preEditSpeed = 1;
+  // How many boss floors the party cleared during the current run.
+  // Resets on startRun; rolled into the final insight payout.
+  let bossesClearedThisRun = 0;
   let scripts = $state<Record<DelverClass, string>>({
     warrior: '',
     ranger: '',
@@ -130,9 +134,35 @@ function createGame() {
     const unlocked = new Set(meta.unlockedApis);
     const { actions, events } = await host.step(world, unlocked);
     if (events.length) world.events.push(...events);
+    const beforeLen = world.events.length;
     advanceTick(world, { delverActions: actions });
+    // Sonify any events the tick produced. Done here rather than in the
+    // engine so the engine stays pure/testable.
+    sonifyEvents(world.events, beforeLen);
     captureFrame();
     world = { ...world };
+  }
+
+  function sonifyEvents(events: LogEvent[], fromIdx: number): void {
+    for (let i = fromIdx; i < events.length; i++) {
+      const e = events[i];
+      switch (e.kind) {
+        case 'attack':
+          audio.play(e.data?.crit === true ? 'crit' : 'hit');
+          break;
+        case 'heal':
+          audio.play('heal');
+          break;
+        case 'death':
+          audio.play('death');
+          break;
+        case 'descend':
+          audio.play('descend');
+          break;
+        default:
+          break;
+      }
+    }
   }
 
   function captureFrame(): void {
@@ -163,7 +193,11 @@ function createGame() {
   function finaliseRun(): void {
     if (!world) return;
     const depth = world.depth;
-    const insight = depth * 10;
+    // +25 insight per boss cleared during the run. Counter is captured
+    // locally so it can be reset here without a race.
+    const bossBonus = bossesClearedThisRun * 25;
+    const insight = depth * 10 + bossBonus;
+    bossesClearedThisRun = 0;
     meta.totalRuns++;
     meta.totalDeaths += world.delvers.filter((d) => d.hp === 0).length;
     meta.deepestDepth = Math.max(meta.deepestDepth, depth);
@@ -213,6 +247,8 @@ function createGame() {
       causeOfDeath,
       insightEarned: insight,
     };
+    audio.stopAmbient();
+    audio.play('wipe');
     screen = 'postmortem';
   }
 
@@ -245,6 +281,7 @@ function createGame() {
     host?.dispose();
     host = new SandboxHost({ budgetMs: 80 });
     editingMidRun = false;
+    bossesClearedThisRun = 0;
     const seed = `run-${Date.now()}`;
     const delvers: Delver[] = [
       spawnDelver({
@@ -323,23 +360,39 @@ function createGame() {
 
     screen = 'run';
     speed = 1;
+    audio.startAmbient(isBossFloor(world.depth) ? 'boss' : 'calm');
+    if (isBossFloor(world.depth)) audio.play('boss-intro');
     loopOnce();
   }
 
   async function descendNextFloor(): Promise<void> {
     if (!world || !host) return;
-    const survivors = world.delvers.map((d) => ({
-      ...d,
-      hp: d.maxHp,
-      mp: d.maxMp,
-      cooldowns: { ...d.cooldowns, heal: 0 },
-      reviveUsedDepth: null,
-    }));
+    // Count any boss the party cleared on this floor for the end-of-run
+    // bonus. Checked before we rebuild the world.
+    if (isBossFloor(world.depth)) bossesClearedThisRun++;
+    // Death is permanent: anyone who fell on this floor stays dead on the
+    // next one. Bringing them back is what the cleric's revive action is
+    // for — and it has a once-per-depth cost. Heals and cooldown resets
+    // only apply to survivors.
+    const survivors = world.delvers.map((d) => {
+      if (d.hp === 0) return d;
+      return {
+        ...d,
+        hp: d.maxHp,
+        mp: d.maxMp,
+        cooldowns: { ...d.cooldowns, heal: 0 },
+        reviveUsedDepth: null,
+      };
+    });
     const nextDepth = world.depth + 1;
     world = createWorld({ seed: world.seed, depth: nextDepth, delvers: survivors });
     meta.deepestDepth = Math.max(meta.deepestDepth, nextDepth);
     saveMeta(meta);
     speed = 1;
+    // Swap ambient beds between normal / boss floors so the music cue
+    // lines up with the visual change.
+    audio.startAmbient(isBossFloor(nextDepth) ? 'boss' : 'calm');
+    if (isBossFloor(nextDepth)) audio.play('boss-intro');
 
     // Reset the trace to cover only the CURRENT floor — replay scope is
     // "show me how this floor went", not the whole descent.

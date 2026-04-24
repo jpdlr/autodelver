@@ -13,10 +13,39 @@ export function resetEntityCounter(): void {
 }
 
 const ENEMY_STATS: Record<EnemyArchetype, { hp: number; atk: number; armor: number }> = {
-  slime: { hp: 8, atk: 3, armor: 0 },
+  slime:  { hp: 8,  atk: 3, armor: 0 },
   goblin: { hp: 12, atk: 5, armor: 1 },
   wraith: { hp: 18, atk: 7, armor: 2 },
+  brute:  { hp: 28, atk: 9, armor: 3 },
+  lich:   { hp: 22, atk: 10, armor: 2 },
 };
+
+/** Weighted archetype pool by depth. Entries appear as they unlock and
+ *  higher-tier archetypes weight up so late floors feel distinctly nastier. */
+function archetypePoolForDepth(depth: number): EnemyArchetype[] {
+  const pool: EnemyArchetype[] = [];
+  pool.push('slime', 'slime', 'goblin');
+  if (depth >= 2) pool.push('goblin');
+  if (depth >= 3) pool.push('wraith');
+  if (depth >= 4) pool.push('wraith');
+  if (depth >= 5) pool.push('brute');
+  if (depth >= 6) pool.push('goblin', 'wraith');
+  if (depth >= 7) pool.push('lich');
+  if (depth >= 9) pool.push('brute', 'lich');
+  if (depth >= 12) pool.push('brute', 'lich', 'wraith');
+  return pool;
+}
+
+export function isBossFloor(depth: number): boolean {
+  return depth > 0 && depth % 5 === 0;
+}
+
+/** Pick the boss archetype for a given depth. Cycles through the heavy
+ *  hitters so each boss floor feels distinct. */
+function bossArchetypeForDepth(depth: number): EnemyArchetype {
+  const cycle: EnemyArchetype[] = ['brute', 'wraith', 'lich', 'brute', 'lich'];
+  return cycle[(Math.floor(depth / 5) - 1) % cycle.length] ?? 'brute';
+}
 
 export function spawnDelver(partial: Partial<Delver> & Pick<Delver, 'class' | 'name' | 'script' | 'pos'>): Delver {
   const base: Delver = {
@@ -42,19 +71,31 @@ export function spawnDelver(partial: Partial<Delver> & Pick<Delver, 'class' | 'n
   return { ...base, ...partial };
 }
 
-export function spawnEnemy(archetype: EnemyArchetype, pos: Pos, depth: number, seed: number): Enemy {
+export function spawnEnemy(
+  archetype: EnemyArchetype,
+  pos: Pos,
+  depth: number,
+  seed: number,
+  opts: { boss?: boolean } = {},
+): Enemy {
   const s = ENEMY_STATS[archetype];
   const depthScale = 1 + (depth - 1) * 0.15;
+  const boss = opts.boss ?? false;
+  // Boss: 3× HP, +50% attack, +1 armor. Still scales with depth.
+  const hpMul = boss ? 3 : 1;
+  const atkMul = boss ? 1.5 : 1;
+  const armorBonus = boss ? 1 : 0;
   return {
     id: nextId('e'),
     kind: 'enemy',
     archetype,
     pos,
-    hp: Math.round(s.hp * depthScale),
-    maxHp: Math.round(s.hp * depthScale),
-    attack: Math.round(s.atk * depthScale),
-    armor: s.armor,
+    hp: Math.round(s.hp * depthScale * hpMul),
+    maxHp: Math.round(s.hp * depthScale * hpMul),
+    attack: Math.round(s.atk * depthScale * atkMul),
+    armor: s.armor + armorBonus,
     seed,
+    ...(boss ? { isBoss: true } : {}),
   };
 }
 
@@ -66,7 +107,18 @@ export interface NewRunParams {
 
 export function createWorld(params: NewRunParams): World {
   const rng: Rng = sfc32(`${params.seed}:depth${params.depth}`);
-  const dungeon = generateDungeon(rng);
+  const boss = isBossFloor(params.depth);
+  // Dungeons grow subtly with depth so late floors breathe more.
+  // Boss floors get a larger grid with fewer, bigger rooms — the goal
+  // is a dedicated arena for the boss encounter.
+  const sizeBump = Math.min(8, Math.floor((params.depth - 1) / 3));
+  const dungeon = generateDungeon(rng, {
+    width: (boss ? 54 : 48) + sizeBump,
+    height: (boss ? 32 : 28) + Math.floor(sizeBump / 2),
+    minRoomSize: boss ? 7 : 5 + Math.floor(sizeBump / 4),
+    maxRoomSize: boss ? 13 : 9 + Math.floor(sizeBump / 3),
+    roomAttempts: boss ? 8 : 16,
+  });
 
   // Place delvers at entrance in a tight cluster of walkable tiles
   const offsets: Pos[] = [
@@ -84,13 +136,32 @@ export function createWorld(params: NewRunParams): World {
     };
   });
 
-  // Spawn enemies — count scales with depth
-  const enemyCount = 3 + Math.floor(params.depth * 1.5);
-  const spawnPositions = pickSpawnsInRooms(dungeon.rooms, rng, enemyCount, [dungeon.entrance]);
-  const enemies: Enemy[] = spawnPositions.map((pos) => {
-    const archetype = rngPick<EnemyArchetype>(rng, ['slime', 'slime', 'goblin', 'goblin', 'wraith']);
-    return spawnEnemy(archetype, pos, params.depth, rngInt(rng, 0, 1e9));
-  });
+  // Spawn enemies. Normal floors scale count with depth and pick from the
+  // depth-weighted archetype pool. Boss floors spawn a single elite plus
+  // a few minions to break up the encounter.
+  const pool = archetypePoolForDepth(params.depth);
+  const enemies: Enemy[] = [];
+  if (boss) {
+    const bossArch = bossArchetypeForDepth(params.depth);
+    // Boss sits in the far (stairs) room.
+    enemies.push(spawnEnemy(bossArch, dungeon.stairs, params.depth, rngInt(rng, 0, 1e9), { boss: true }));
+    const minionCount = 2 + Math.floor(params.depth / 5);
+    const minionPositions = pickSpawnsInRooms(dungeon.rooms, rng, minionCount, [
+      dungeon.entrance,
+      dungeon.stairs,
+    ]);
+    for (const pos of minionPositions) {
+      const archetype = rngPick<EnemyArchetype>(rng, pool);
+      enemies.push(spawnEnemy(archetype, pos, params.depth, rngInt(rng, 0, 1e9)));
+    }
+  } else {
+    const enemyCount = 3 + Math.floor(params.depth * 1.7);
+    const spawnPositions = pickSpawnsInRooms(dungeon.rooms, rng, enemyCount, [dungeon.entrance]);
+    for (const pos of spawnPositions) {
+      const archetype = rngPick<EnemyArchetype>(rng, pool);
+      enemies.push(spawnEnemy(archetype, pos, params.depth, rngInt(rng, 0, 1e9)));
+    }
+  }
 
   return {
     seed: params.seed,
@@ -105,7 +176,9 @@ export function createWorld(params: NewRunParams): World {
       {
         tick: 0,
         kind: 'info',
-        message: `Descent ${params.depth} begins — ${params.delvers.length} delver(s), ${enemies.length} hostile(s).`,
+        message: boss
+          ? `Depth ${params.depth}: a boss stirs. ${params.delvers.length} delver(s) against ${enemies.length} hostile(s).`
+          : `Descent ${params.depth} begins — ${params.delvers.length} delver(s), ${enemies.length} hostile(s).`,
       },
     ],
     status: 'running',

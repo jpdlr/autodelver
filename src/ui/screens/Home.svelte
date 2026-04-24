@@ -61,6 +61,26 @@
     { cls: 'ranger', name: 'Vex', role: 'DPS', blurb: 'Fragile. Deadly from three tiles away. Needs a tank.', hp: 30, atk: 8, range: 3, mp: 0, abilities: ['Ranged 3', 'Glass cannon'], sprite: 'vex-ranger' },
     { cls: 'cleric', name: 'Mira', role: 'Support', blurb: 'Short-range support. Heals wounds and can revive once per depth.', hp: 30, atk: 5, range: 2, mp: 10, abilities: ['Heal 5 HP', 'Revive 5 HP'], sprite: 'mira-cleric' },
   ];
+
+  interface EnemyMeta {
+    name: string;
+    blurb: string;
+    hp: number;
+    atk: number;
+    armor: number;
+    unlock: string;
+    tags: string[];
+    sprite: SpriteId;
+    tier: 'common' | 'elite' | 'boss';
+  }
+  const bestiary: EnemyMeta[] = [
+    { name: 'Slime',  blurb: 'Chump damage, soaks a hit. Good for sharpening your loop.',       hp: 8,  atk: 3,  armor: 0, unlock: 'Depth 1', tags: ['Swarm'],          sprite: 'slime',  tier: 'common' },
+    { name: 'Goblin', blurb: 'Hits harder than it looks. Will punish sloppy pathing.',          hp: 12, atk: 5,  armor: 1, unlock: 'Depth 1', tags: ['Aggressive'],     sprite: 'skitter', tier: 'common' },
+    { name: 'Wraith', blurb: 'Mid-range menace with armour. Ranger targets it, cleric prays.',   hp: 18, atk: 7,  armor: 2, unlock: 'Depth 3', tags: ['Armoured'],       sprite: 'wraith', tier: 'elite' },
+    { name: 'Brute',  blurb: 'Slow, heavy-armour wall of HP. Kite or trade turns carefully.',    hp: 28, atk: 9,  armor: 3, unlock: 'Depth 5', tags: ['Heavy'],          sprite: 'brute',  tier: 'elite' },
+    { name: 'Lich',   blurb: 'Highest raw damage. Delete it before it deletes Mira.',           hp: 22, atk: 10, armor: 2, unlock: 'Depth 7', tags: ['High damage'],    sprite: 'lich',   tier: 'elite' },
+    { name: 'Floor Boss', blurb: 'Every 5th depth. 3× HP, +armour, +damage. Bonus insight on kill.', hp: 0, atk: 0, armor: 0, unlock: 'Depth 5, 10, 15 …', tags: ['Gate'], sprite: 'brute', tier: 'boss' },
+  ];
 </script>
 
 <section class="home-scroll">
@@ -153,6 +173,43 @@
                 {/if}
               </div>
             </div>
+          </div>
+        </div>
+      {/each}
+    </div>
+  </section>
+
+  <section class="section">
+    <h3 class="sec-head">The Bestiary</h3>
+    <p class="sec-sub">What the dungeon throws at you. Harder archetypes unlock as you descend.</p>
+
+    <div class="bestiary">
+      {#each bestiary as e}
+        <div class="foe tier-{e.tier}">
+          <div class="foe-head">
+            <div class="foe-portrait" aria-hidden="true">
+              {@html sprites[e.sprite].svg}
+            </div>
+            <div class="foe-meta">
+              <div class="foe-name">
+                {e.name}
+                {#if e.tier === 'boss'}<span class="tier-chip boss">Boss</span>
+                {:else if e.tier === 'elite'}<span class="tier-chip elite">Elite</span>
+                {/if}
+              </div>
+              <div class="foe-unlock">{e.unlock}</div>
+            </div>
+          </div>
+          <div class="foe-blurb">{e.blurb}</div>
+          {#if e.tier !== 'boss'}
+            <div class="foe-stats">
+              <div class="stat-cell"><span class="lbl">HP</span><span class="val">{e.hp}</span></div>
+              <div class="stat-cell"><span class="lbl">ATK</span><span class="val">{e.atk}</span></div>
+              <div class="stat-cell"><span class="lbl">ARM</span><span class="val">{e.armor}</span></div>
+            </div>
+          {/if}
+          <div class="foe-tags">
+            {#each e.tags as t}<span class="ability-chip">{t}</span>{/each}
           </div>
         </div>
       {/each}
@@ -765,9 +822,96 @@
     text-align: center;
   }
 
+  /* ─── BESTIARY ─────────────────────────── */
+  .bestiary {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--sp-3);
+  }
+  .foe {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: var(--sp-4);
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-2);
+    transition: transform var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out);
+  }
+  .foe:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--elev-1);
+  }
+  .foe.tier-elite {
+    border-color: color-mix(in srgb, var(--color-accent) 35%, var(--color-border));
+  }
+  .foe.tier-boss {
+    border-color: color-mix(in srgb, #c94a4a 55%, var(--color-border));
+    background: color-mix(in srgb, #c94a4a 6%, var(--color-surface));
+  }
+  .foe-head { display: flex; gap: var(--sp-3); align-items: center; }
+  .foe-portrait {
+    width: 52px; height: 52px;
+    flex-shrink: 0;
+    background: var(--color-surface-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .foe-portrait :global(svg) { width: 100%; height: 100%; }
+  .foe-name {
+    font-weight: 700;
+    color: var(--color-text);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .foe-unlock {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--color-text-subtle);
+  }
+  .tier-chip {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 2px 6px;
+    border-radius: 999px;
+  }
+  .tier-chip.elite {
+    color: var(--color-accent);
+    border: 1px solid color-mix(in srgb, var(--color-accent) 55%, transparent);
+  }
+  .tier-chip.boss {
+    color: #fff;
+    background: #c94a4a;
+  }
+  .foe-blurb {
+    color: var(--color-text-muted);
+    font-size: var(--fs-sm);
+    line-height: 1.45;
+  }
+  .foe-stats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--sp-2);
+  }
+  .foe-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
   /* ─── RESPONSIVE ──────────────────────────── */
   @media (max-width: 720px) {
     .roster,
+    .bestiary,
     .steps {
       grid-template-columns: 1fr;
     }

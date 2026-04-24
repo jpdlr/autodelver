@@ -8,8 +8,16 @@
   import CodenameSetup from './ui/screens/CodenameSetup.svelte';
   import Leaderboard from './ui/screens/Leaderboard.svelte';
   import ThemeToggle from './ui/ThemeToggle.svelte';
+  import SettingsDialog from './ui/SettingsDialog.svelte';
   import { game } from './stores/game.svelte';
   import { auth } from './stores/auth.svelte';
+  import { audio } from './stores/audio.svelte';
+
+  let settingsOpen = $state(false);
+  function openSettings(): void {
+    audio.play('click');
+    settingsOpen = true;
+  }
 </script>
 
 <div class="app">
@@ -23,9 +31,22 @@
         </span>
         <button type="button" class="signout" onclick={() => auth.signOut()}>Sign out</button>
       {/if}
+      <button
+        type="button"
+        class="icon-btn"
+        onclick={openSettings}
+        title="Settings"
+        aria-label="Open settings"
+      >
+        <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zm6.3 2.5a6 6 0 0 0-.1-1l1.3-1-1.3-2.2-1.5.5a6 6 0 0 0-1.7-1L10.7 1h-2.5l-.3 1.5a6 6 0 0 0-1.7 1l-1.5-.5L3.4 5l1.3 1a6 6 0 0 0-.1 1c0 .3 0 .7.1 1L3.4 9l1.3 2.2 1.5-.5a6 6 0 0 0 1.7 1l.3 1.5h2.5l.3-1.5a6 6 0 0 0 1.7-1l1.5.5L15.5 9l-1.3-1c.1-.3.1-.7.1-1z" stroke="currentColor" stroke-width="0.9" fill="none" stroke-linejoin="round"/></svg>
+      </button>
       <ThemeToggle />
     </div>
   </nav>
+
+  {#if settingsOpen}
+    <SettingsDialog onClose={() => (settingsOpen = false)} />
+  {/if}
 
   <main>
     {#if auth.loading}
@@ -106,6 +127,23 @@
     color: var(--color-text-subtle);
   }
   .signout:hover {
+    color: var(--color-text);
+    border-color: var(--color-border);
+    background: var(--color-surface-2);
+  }
+  .icon-btn {
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
+    color: var(--color-text-subtle);
+  }
+  .icon-btn:hover {
     color: var(--color-text);
     border-color: var(--color-border);
     background: var(--color-surface-2);

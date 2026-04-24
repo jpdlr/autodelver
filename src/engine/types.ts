@@ -6,7 +6,7 @@ export type TileKind = 'wall' | 'floor' | 'door' | 'stairs-down';
 
 export type DelverClass = 'warrior' | 'ranger' | 'cleric';
 
-export type EnemyArchetype = 'slime' | 'goblin' | 'wraith';
+export type EnemyArchetype = 'slime' | 'goblin' | 'wraith' | 'brute' | 'lich';
 
 export interface BaseEntity {
   id: EntityId;
@@ -40,6 +40,9 @@ export interface Enemy extends BaseEntity {
   attack: number;
   armor: number;
   seed: number;
+  /** True for boss-floor elites — larger, tougher, show a boss banner and
+   *  award bonus insight when cleared. */
+  isBoss?: boolean;
 }
 
 export type Entity = Delver | Enemy;
