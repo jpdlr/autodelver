@@ -95,17 +95,34 @@ export interface World {
 }
 
 export interface MetaProgression {
+  playerId: string;
+  username: string;
   insight: number;
   deepestDepth: number;
   totalRuns: number;
   totalDeaths: number;
   unlockedApis: string[];
+  runHistory: RunRecord[];
+}
+
+export interface RunRecord {
+  id: string;
+  playerId: string;
+  username: string;
+  depth: number;
+  ticks: number;
+  insightEarned: number;
+  causeOfDeath: string;
+  finishedAt: string;
 }
 
 export const DEFAULT_META: MetaProgression = {
+  playerId: '',
+  username: '',
   insight: 0,
   deepestDepth: 0,
   totalRuns: 0,
   totalDeaths: 0,
   unlockedApis: [],
+  runHistory: [],
 };

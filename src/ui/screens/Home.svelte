@@ -8,11 +8,29 @@
     await game.startRun();
   }
 
+  function onTutorial(): void {
+    game.screen = 'tutorial';
+  }
+
   function onLoadout(): void {
     game.screen = 'loadout';
   }
 
   const isFirstRun = $derived(game.meta.totalRuns === 0);
+  let usernameDraft = $state(game.meta.username);
+  let editingUsername = $state(!game.meta.username);
+  const leaderboard = $derived(game.meta.runHistory.slice(0, 5));
+
+  function saveUsername(): void {
+    game.setUsername(usernameDraft);
+    usernameDraft = game.meta.username;
+    editingUsername = !game.meta.username;
+  }
+
+  function editUsername(): void {
+    usernameDraft = game.meta.username;
+    editingUsername = true;
+  }
 
   interface Classmeta {
     cls: 'warrior' | 'ranger' | 'cleric';
@@ -51,14 +69,19 @@
     <p class="tagline">You do not descend. You <em>write</em> the descent.</p>
 
     <div class="cta-row">
-      <button type="button" class="primary cta" onclick={onDescend}>
-        {isFirstRun ? 'Begin First Descent' : 'Descend'}
-      </button>
+      {#if isFirstRun}
+        <button type="button" class="primary cta" onclick={onTutorial}>Start Tutorial</button>
+      {:else}
+        <button type="button" class="primary cta" onclick={onDescend}>Descend</button>
+      {/if}
+      <button type="button" onclick={onTutorial}>Tutorial</button>
       <button type="button" onclick={onLoadout}>Edit Scripts</button>
     </div>
 
     {#if game.meta.totalRuns > 0}
       <div class="legacy-compact">
+        <span><strong>{game.meta.username || 'Anonymous Delver'}</strong></span>
+        <span class="divider">·</span>
         <span><strong>Depth {game.meta.deepestDepth}</strong> reached</span>
         <span class="divider">·</span>
         <span><strong>{game.meta.insight}</strong> Insight</span>
@@ -70,6 +93,28 @@
   </div>
 
   <div class="page-body">
+  <section class="profile-card card">
+    <div>
+      <p class="profile-label">Player identity</p>
+      <h3>{game.meta.username || 'Choose your delver name'}</h3>
+      <p>Your name, progression, scripts, and run history are saved locally in this browser.</p>
+    </div>
+
+    {#if editingUsername}
+      <form class="username-form" onsubmit={(e) => { e.preventDefault(); saveUsername(); }}>
+        <input
+          aria-label="Username"
+          placeholder="e.g. Nullmancer"
+          maxlength="24"
+          bind:value={usernameDraft}
+        />
+        <button type="submit" class="primary" disabled={!usernameDraft.trim()}>Save name</button>
+      </form>
+    {:else}
+      <button type="button" onclick={editUsername}>Edit name</button>
+    {/if}
+  </section>
+
   <div class="story card">
     <p>
       You are not a hero. You are the <strong>necromancer-programmer</strong>. Your party of three delvers descends an
@@ -215,6 +260,31 @@
     </section>
   {/if}
 
+  <section class="section leaderboard">
+    <h3 class="sec-head">Local Leaderboard</h3>
+    <p class="sec-sub">Your best runs on this device. Online rankings can build on this shape later.</p>
+
+    <div class="leaderboard-card card">
+      {#if leaderboard.length}
+        {#each leaderboard as run, i}
+          <div class="leader-row">
+            <div class="rank">#{i + 1}</div>
+            <div class="leader-main">
+              <strong>{run.username}</strong>
+              <span>{new Date(run.finishedAt).toLocaleDateString()}</span>
+            </div>
+            <div class="leader-score">
+              <strong>Depth {run.depth}</strong>
+              <span>{run.ticks} ticks · +{run.insightEarned} Insight</span>
+            </div>
+          </div>
+        {/each}
+      {:else}
+        <div class="empty-board">Complete a run to record your first score.</div>
+      {/if}
+    </div>
+  </section>
+
   <footer class="site-foot">
     <div>AutoDelver · Svelte 5 + Vite + TypeScript</div>
     <div class="foot-mono">roguelite · idler · programmable</div>
@@ -339,9 +409,59 @@
   }
 
   /* ─── STORY ───────────────────────────────── */
+  .profile-card {
+    max-width: 740px;
+    margin: var(--sp-5) auto var(--sp-4);
+    padding: var(--sp-4) var(--sp-5);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-4);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--elev-1);
+  }
+  .profile-label {
+    margin: 0 0 var(--sp-1);
+    color: var(--color-accent);
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .profile-card h3 {
+    margin: 0;
+    color: var(--color-text);
+  }
+  .profile-card p:last-child {
+    margin: var(--sp-1) 0 0;
+    color: var(--color-text-muted);
+    font-size: var(--fs-sm);
+    line-height: 1.5;
+  }
+  .username-form {
+    display: flex;
+    gap: var(--sp-2);
+    flex-shrink: 0;
+  }
+  .username-form input {
+    min-width: 220px;
+    padding: var(--sp-2) var(--sp-3);
+    background: var(--color-surface-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    color: var(--color-text);
+    font: inherit;
+  }
+  .username-form input:focus {
+    outline: 2px solid var(--color-accent-soft);
+    border-color: var(--color-accent);
+  }
+
   .story {
     max-width: 740px;
-    margin: var(--sp-5) auto var(--sp-8);
+    margin: 0 auto var(--sp-8);
     padding: var(--sp-5) var(--sp-6);
     background: var(--color-surface);
     border: 1px solid var(--color-border);
@@ -649,6 +769,57 @@
     font-weight: 600;
   }
 
+  /* ─── LEADERBOARD ─────────────────────────── */
+  .leaderboard-card {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: var(--sp-2);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--elev-1);
+  }
+  .leader-row {
+    display: grid;
+    grid-template-columns: 52px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: var(--sp-3);
+    padding: var(--sp-3);
+    border-bottom: 1px solid var(--color-border);
+  }
+  .leader-row:last-child {
+    border-bottom: none;
+  }
+  .rank {
+    color: var(--color-accent);
+    font-family: var(--font-mono);
+    font-weight: 700;
+  }
+  .leader-main,
+  .leader-score {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .leader-main strong,
+  .leader-score strong {
+    color: var(--color-text);
+  }
+  .leader-main span,
+  .leader-score span {
+    color: var(--color-text-subtle);
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+  }
+  .leader-score {
+    text-align: right;
+  }
+  .empty-board {
+    padding: var(--sp-5);
+    color: var(--color-text-muted);
+    text-align: center;
+  }
+
   /* ─── FOOTER ──────────────────────────────── */
   .site-foot {
     max-width: 1080px;
@@ -673,6 +844,16 @@
     }
     .legacy .stats {
       grid-template-columns: repeat(2, 1fr);
+    }
+    .profile-card,
+    .username-form,
+    .leader-row {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+    }
+    .leader-score {
+      text-align: left;
     }
     .legacy-compact {
       flex-wrap: wrap;

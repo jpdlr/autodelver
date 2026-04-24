@@ -58,6 +58,22 @@ function createGame() {
     meta.totalDeaths += world.delvers.filter((d) => d.hp === 0).length;
     meta.deepestDepth = Math.max(meta.deepestDepth, depth);
     meta.insight += insight;
+    const causeOfDeath = [...world.events]
+      .reverse()
+      .find((e) => e.kind === 'death' || e.kind === 'damage')?.message ?? 'The dungeon closes without ceremony.';
+    const runRecord = {
+      id: `run-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+      playerId: meta.playerId,
+      username: meta.username || 'Anonymous Delver',
+      depth,
+      ticks: world.tick,
+      causeOfDeath,
+      insightEarned: insight,
+      finishedAt: new Date().toISOString(),
+    };
+    meta.runHistory = [runRecord, ...meta.runHistory]
+      .sort((a, b) => b.depth - a.depth || a.ticks - b.ticks)
+      .slice(0, 25);
     if (depth >= 2 && !meta.unlockedApis.includes('memory')) {
       meta.unlockedApis = [...meta.unlockedApis, 'memory'];
     }
@@ -66,13 +82,10 @@ function createGame() {
     }
     saveMeta(meta);
 
-    const lastDeath = [...world.events]
-      .reverse()
-      .find((e) => e.kind === 'death' || e.kind === 'damage');
     lastRunSummary = {
       depth,
       ticks: world.tick,
-      causeOfDeath: lastDeath?.message ?? 'The dungeon closes without ceremony.',
+      causeOfDeath,
       insightEarned: insight,
     };
     screen = 'postmortem';
@@ -197,6 +210,11 @@ function createGame() {
     },
     get editingMidRun() {
       return editingMidRun;
+    },
+    setUsername(name: string): void {
+      const clean = name.trim().replace(/\s+/g, ' ').slice(0, 24);
+      meta.username = clean;
+      saveMeta(meta);
     },
     setScript(cls: DelverClass, script: string): void {
       scripts = { ...scripts, [cls]: script };
