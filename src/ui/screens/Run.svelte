@@ -129,24 +129,21 @@
     </div>
   </header>
 
-  <div class="body">
+  <div class="body" class:editing={game.editingMidRun}>
     <div class="grid-col">
       <GridCanvas world={game.world} />
     </div>
-    <div class="log-col">
-      <div class="log-label">Combat log</div>
-      <LogPanel events={game.recentLog(80)} />
-    </div>
-  </div>
-
-  {#if game.editingMidRun}
-    <div class="edit-overlay" role="dialog" aria-modal="true">
-      <div class="edit-backdrop" onclick={closeEdit} aria-hidden="true"></div>
-      <div class="edit-shell">
-        <ScriptEditorPanel onClose={closeEdit} />
+    {#if game.editingMidRun}
+      <div class="edit-col">
+        <ScriptEditorPanel onClose={closeEdit} compact />
       </div>
-    </div>
-  {/if}
+    {:else}
+      <div class="log-col">
+        <div class="log-label">Combat log</div>
+        <LogPanel events={game.recentLog(80)} />
+      </div>
+    {/if}
+  </div>
 </section>
 
 <style>
@@ -400,6 +397,17 @@
     padding: var(--sp-3);
     min-height: 0;
   }
+  /* When editing, the editor panel sits where the log was — give it more
+   *  breathing room but keep the dungeon visible on the left. */
+  .body.editing {
+    grid-template-columns: minmax(0, 1fr) minmax(520px, 42%);
+  }
+  .edit-col {
+    min-height: 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+  }
   .grid-col {
     min-height: 0;
     overflow: hidden;
@@ -419,32 +427,9 @@
   }
 
   @media (max-width: 900px) {
-    .body {
+    .body,
+    .body.editing {
       grid-template-columns: 1fr;
     }
-  }
-
-  .edit-overlay {
-    position: absolute;
-    inset: 0;
-    z-index: 50;
-    display: flex;
-    align-items: stretch;
-    justify-content: center;
-    padding: var(--sp-3);
-  }
-  .edit-backdrop {
-    position: absolute;
-    inset: 0;
-    background: var(--color-overlay);
-    backdrop-filter: blur(2px);
-  }
-  .edit-shell {
-    position: relative;
-    width: min(1600px, 100%);
-    max-height: 100%;
-    display: flex;
-    flex-direction: column;
-    min-height: 0;
   }
 </style>

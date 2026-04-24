@@ -13,7 +13,9 @@
   let { onClose, compact = false }: Props = $props();
 
   let activeClass = $state<DelverClass>('warrior');
-  let showApi = $state<boolean>(true);
+  // In the side-panel (compact) layout the API reference takes space away
+  // from the actual editor and the dungeon, so default it to closed there.
+  let showApi = $state<boolean>(!compact);
   let showNotebook = $state<boolean>(false);
   const classes: DelverClass[] = ['warrior', 'ranger', 'cleric'];
   const classNames: Record<DelverClass, string> = {
@@ -73,15 +75,33 @@
     <div class="header-actions">
       <button
         type="button"
-        class="ghost small"
+        class="icon-toggle"
         class:toggle-active={showNotebook}
         onclick={() => (showNotebook = !showNotebook)}
-        title="Save, name, and restore script drafts"
+        title={showNotebook ? 'Hide notebook' : 'Show notebook — save, name, and restore drafts'}
+        aria-pressed={showNotebook}
       >
-        {showNotebook ? 'Hide notebook' : 'Notebook'}
+        <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true">
+          <rect x="3" y="2" width="10" height="12" rx="1.5" stroke="currentColor" stroke-width="1.3" fill="none"/>
+          <path d="M3 2v12" stroke="currentColor" stroke-width="1.3"/>
+          <path d="M6 5h5M6 8h5M6 11h3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+        </svg>
+        <span>Notebook</span>
       </button>
-      <button type="button" class="ghost small" onclick={() => (showApi = !showApi)}>
-        {showApi ? 'Hide reference' : 'Reference'}
+      <button
+        type="button"
+        class="icon-toggle"
+        class:toggle-active={showApi}
+        onclick={() => (showApi = !showApi)}
+        title={showApi ? 'Hide reference' : 'Show the ctx/action reference'}
+        aria-pressed={showApi}
+      >
+        <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true">
+          <circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.3" fill="none"/>
+          <path d="M6.2 6.2a1.8 1.8 0 1 1 2.3 2.3c-.5.2-.8.5-.8 1v.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" fill="none"/>
+          <circle cx="8" cy="12" r="0.7" fill="currentColor"/>
+        </svg>
+        <span>Reference</span>
       </button>
       {#if onClose}
         <button type="button" class="primary" onclick={onClose}>Apply & Resume</button>
@@ -227,10 +247,37 @@
     gap: var(--sp-2);
   }
 
-  .header-actions .toggle-active {
+  .icon-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    font-size: var(--fs-xs);
+    background: transparent;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    color: var(--color-text-muted);
+    transition: color var(--dur-fast) var(--ease-out),
+                background var(--dur-fast) var(--ease-out),
+                border-color var(--dur-fast) var(--ease-out);
+  }
+  .icon-toggle:hover {
     color: var(--color-accent);
-    border-color: color-mix(in srgb, var(--color-accent) 40%, transparent);
-    background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+    border-color: var(--color-accent);
+    background: color-mix(in srgb, var(--color-accent) 8%, transparent);
+  }
+  .icon-toggle svg {
+    flex-shrink: 0;
+    color: inherit;
+  }
+  .icon-toggle.toggle-active {
+    color: var(--color-accent);
+    border-color: color-mix(in srgb, var(--color-accent) 55%, transparent);
+    background: color-mix(in srgb, var(--color-accent) 14%, transparent);
+  }
+  .icon-toggle.toggle-active:hover {
+    border-color: var(--color-accent);
+    background: color-mix(in srgb, var(--color-accent) 22%, transparent);
   }
 
   .editor-body {

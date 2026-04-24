@@ -8,6 +8,7 @@
     suggestDuplicateName,
     type ScriptPreset,
   } from '../persistence/presets';
+  import ConfirmDialog from './ConfirmDialog.svelte';
 
   interface Props {
     cls: DelverClass;
@@ -29,6 +30,12 @@
   let renameDraft = $state('');
   let feedback = $state<{ text: string; kind: 'ok' | 'err' } | null>(null);
   let flashTimer: ReturnType<typeof setTimeout> | null = null;
+  // Modal-backed confirmation state — replaces the browser confirm() dialog
+  // for destructive actions (delete, overwrite).
+  type PendingAction =
+    | { kind: 'delete'; preset: ScriptPreset }
+    | { kind: 'overwrite'; preset: ScriptPreset };
+  let pending = $state<PendingAction | null>(null);
 
   // Refresh presets list whenever the active class changes.
   $effect(() => {
@@ -62,9 +69,29 @@
   }
 
   function handleDelete(p: ScriptPreset): void {
-    if (!confirm(`Delete preset "${p.name}"? This can't be undone.`)) return;
-    presets = deletePreset(cls, p.id);
-    flash(`Deleted "${p.name}"`, 'ok');
+    pending = { kind: 'delete', preset: p };
+  }
+
+  function handleOverwrite(p: ScriptPreset): void {
+    pending = { kind: 'overwrite', preset: p };
+  }
+
+  function confirmPending(): void {
+    if (!pending) return;
+    if (pending.kind === 'delete') {
+      const p = pending.preset;
+      presets = deletePreset(cls, p.id);
+      flash(`Deleted "${p.name}"`, 'ok');
+    } else if (pending.kind === 'overwrite') {
+      const p = pending.preset;
+      presets = savePreset(cls, p.name, currentScript);
+      flash(`Overwrote "${p.name}"`);
+    }
+    pending = null;
+  }
+
+  function cancelPending(): void {
+    pending = null;
   }
 
   function handleLoad(p: ScriptPreset): void {
@@ -183,23 +210,55 @@
             <button
               type="button"
               class="mini"
+              onclick={() => handleOverwrite(p)}
+              title="Overwrite this preset with the current editor contents"
+              aria-label="Overwrite preset"
+              disabled={!currentScript}
+            >
+              <svg viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><path d="M8 3v8M4.5 7.5L8 11l3.5-3.5M3 13h10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
+            </button>
+            <button
+              type="button"
+              class="mini"
               onclick={() => beginRename(p)}
               title="Rename"
               aria-label="Rename preset"
-            >✎</button>
+            >
+              <svg viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><path d="M3 13l2-0.5 7-7-1.5-1.5-7 7L3 13zM10.5 3.5l1.5-1.5 1.5 1.5-1.5 1.5z" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linejoin="round"/></svg>
+            </button>
             <button
               type="button"
               class="mini danger"
               onclick={() => handleDelete(p)}
               title="Delete"
               aria-label="Delete preset"
-            >✕</button>
+            >
+              <svg viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" fill="none"/></svg>
+            </button>
           </span>
         </li>
       {/each}
     </ul>
   {/if}
 </section>
+
+<ConfirmDialog
+  open={pending !== null}
+  danger={pending?.kind === 'delete'}
+  title={pending?.kind === 'delete'
+    ? `Delete "${pending.preset.name}"?`
+    : pending?.kind === 'overwrite'
+      ? `Overwrite "${pending.preset.name}"?`
+      : ''}
+  message={pending?.kind === 'delete'
+    ? 'This preset will be removed from this device. This can’t be undone.'
+    : pending?.kind === 'overwrite'
+      ? 'The saved contents will be replaced with what’s currently in the editor.'
+      : ''}
+  confirmLabel={pending?.kind === 'delete' ? 'Delete' : 'Overwrite'}
+  onConfirm={confirmPending}
+  onCancel={cancelPending}
+/>
 
 <style>
   .notebook {
