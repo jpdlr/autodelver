@@ -79,15 +79,17 @@ function applyDelverAction(world: World, d: Delver, action: Action, rng: Rng): v
       if (!path || path.length < 2) {
         path = findPath(world.grid, d.pos, action.target);
       }
-      if (!path || path.length < 2) return;
-      const next = path[1];
-      const occupant = entityAt(world, next);
-      if (!occupant || posEq(next, action.target)) {
-        d.pos = next;
-        return;
+      if (path && path.length >= 2) {
+        const next = path[1];
+        const occupant = entityAt(world, next);
+        if (!occupant || posEq(next, action.target)) {
+          d.pos = next;
+          return;
+        }
       }
-      // Sidestep: prefer a strictly-closer neighbour; otherwise take any
-      // free neighbour at equal distance so clustered delvers still move.
+      // No path (target off-map, walled off, or occupied) — take the best
+      // single step toward the goal direction so "move far that way" still
+      // produces motion. Prefer strictly-closer free neighbours.
       let equalFallback: Pos | null = null;
       const currDist = distManhattan(d.pos, action.target);
       for (const n of neighbours(d.pos)) {
